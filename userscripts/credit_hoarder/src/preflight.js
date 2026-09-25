@@ -9,7 +9,14 @@
 //
 // ── Lookup strategy per entity ─────────────────────────────────────────────
 //   1. IDB cache (`entity_cache` store) — instant; populated by prior runs.
-//   2. Name search + URL relation run **in parallel**:
+//   2. Name-only artists: search the current release context first:
+//       - directly credited release / track / recording artists
+//       - aliases of those directly credited artists
+//       - artists connected to them by artist↔artist relationships
+//       - aliases of those connected artists
+//      Stop at the first circle with an exact match; ambiguous circles stay
+//      unresolved for review. Only then fall through to the global search.
+//   3. Name search + URL relation run **in parallel**:
 //       - `/ws/2/<type>?query=…&fmt=json`              (search by name)
 //       - `/ws/2/url?resource=<discogsUrl>&inc=<type>-rels`  (URL relation)
 //   3. Decide based on what the two parallel lookups produced:
@@ -42,6 +49,187 @@ const KIND_TABLE = {
     place:  { searchLimit: 8,  resultKey: 'places',  incRels: 'place-rels+label-rels' },
 };
 
+
+const _releaseArtistContextPromises = new Map();
+const _artistContextDetailPromises = new Map();
+
+function normalizeArtistName(value) {
+    return String(value || '').trim().toLowerCase();
+}
+
+function sameArtistName(left, right) {
+    return normalizeArtistName(left) === normalizeArtistName(right);
+}
+
+function artistCanonicalNameMatches(name, artist) {
+    return [artist?.name, artist?.['sort-name'], artist?.sortName]
+        .filter(Boolean)
+        .some(value => sameArtistName(name, value));
+}
+
+function artistAliasMatches(name, artist) {
+    return (artist?.aliases || []).some(alias =>
+        sameArtistName(name, typeof alias === 'string' ? alias : alias?.name)
+    );
+}
+
+function collectReleaseCreditedArtists(release) {
+    const artists = new Map();
+
+    function addCredit(credit, scope) {
+        for (const entry of (credit || [])) {
+            const artist = entry?.artist;
+            if (!artist?.id) continue;
+
+            let item = artists.get(artist.id);
+            if (!item) {
+                item = {
+                    ...artist,
+                    creditedNames: new Set(),
+                    scopes: new Set(),
+                };
+                artists.set(artist.id, item);
+            }
+
+            if (entry?.name) item.creditedNames.add(String(entry.name));
+            if (artist.name) item.creditedNames.add(String(artist.name));
+            item.scopes.add(scope);
+        }
+    }
+
+    addCredit(release?.['artist-credit'], 'release');
+    for (const medium of (release?.media || [])) {
+        for (const track of (medium?.tracks || [])) {
+            addCredit(track?.['artist-credit'], 'track');
+            addCredit(track?.recording?.['artist-credit'], 'recording');
+        }
+    }
+
+    return [...artists.values()];
+}
+
+async function getArtistContextDetails(mbid) {
+    if (!_artistContextDetailPromises.has(mbid)) {
+        _artistContextDetailPromises.set(
+            mbid,
+            mbThrottle.fetchJson(
+                `//musicbrainz.org/ws/2/artist/${mbid}?inc=aliases+artist-rels&fmt=json`
+            )
+        );
+    }
+    return _artistContextDetailPromises.get(mbid);
+}
+
+async function getReleaseArtistContext(releaseMbid) {
+    if (!releaseMbid) return null;
+
+    if (!_releaseArtistContextPromises.has(releaseMbid)) {
+        _releaseArtistContextPromises.set(releaseMbid, (async () => {
+            const release = await mbThrottle.fetchJson(
+                `//musicbrainz.org/ws/2/release/${releaseMbid}?inc=artist-credits+recordings&fmt=json`
+            );
+            if (!release) return null;
+            return {
+                releaseMbid,
+                directArtists: collectReleaseCreditedArtists(release),
+            };
+        })());
+    }
+
+    return _releaseArtistContextPromises.get(releaseMbid);
+}
+
+function contextCandidate(artist) {
+    return {
+        id: artist.id,
+        name: artist.name || '',
+        disambiguation: artist.disambiguation || artist['disambiguation-comment'] || '',
+        score: 100,
+    };
+}
+
+function dedupeContextCandidates(candidates) {
+    return [...new Map(
+        candidates.filter(candidate => candidate?.id).map(candidate => [candidate.id, candidate])
+    ).values()];
+}
+
+async function findContextArtistMatches(searchName, releaseMbid) {
+    const context = await getReleaseArtistContext(releaseMbid);
+    if (!context?.directArtists?.length) return { circle: 0, matches: [] };
+
+    // Circle 1: artists directly credited on this release / track / recording.
+    const circle1 = dedupeContextCandidates(
+        context.directArtists
+            .filter(artist =>
+                artistCanonicalNameMatches(searchName, artist) ||
+                [...(artist.creditedNames || [])].some(name => sameArtistName(searchName, name))
+            )
+            .map(contextCandidate)
+    );
+    if (circle1.length) return { circle: 1, matches: circle1 };
+
+    // Fetch each directly credited artist once. These same responses also carry
+    // the artist↔artist relationships needed by circles 3 and 4.
+    const directDetails = (await Promise.all(
+        context.directArtists.map(artist => getArtistContextDetails(artist.id))
+    )).filter(Boolean);
+
+    // Circle 2: aliases of directly credited artists.
+    const circle2 = dedupeContextCandidates(
+        directDetails
+            .filter(artist => artistAliasMatches(searchName, artist))
+            .map(contextCandidate)
+    );
+    if (circle2.length) return { circle: 2, matches: circle2 };
+
+    const relatedContexts = [];
+    for (const root of directDetails) {
+        for (const relation of (root.relations || [])) {
+            const related = relation?.artist;
+            if (!related?.id) continue;
+            relatedContexts.push({ root, relation, related });
+        }
+    }
+
+    // Circle 3: artists connected to a directly credited artist. Relationship
+    // source/target credits count as names for the related artist too.
+    const circle3 = dedupeContextCandidates(
+        relatedContexts
+            .filter(({ relation, related }) => {
+                const relationshipCredits = [
+                    relation?.['source-credit'],
+                    relation?.['target-credit'],
+                ].filter(Boolean);
+                return artistCanonicalNameMatches(searchName, related) ||
+                    relationshipCredits.some(value => sameArtistName(searchName, value));
+            })
+            .map(({ related }) => contextCandidate(related))
+    );
+    if (circle3.length) return { circle: 3, matches: circle3 };
+
+    // Circle 4: aliases of connected artists. Avoid fetching every artist in a
+    // large relationship neighbourhood: ask the alias index once, restrict the
+    // hits to related MBIDs, then verify the exact alias on only those hits.
+    const relatedIds = new Set(relatedContexts.map(({ related }) => related.id));
+    if (relatedIds.size) {
+        const escaped = String(searchName || '')
+            .replace(/\\/g, '\\\\')
+            .replace(/"/g, '\\"');
+        const aliasJson = await mbThrottle.fetchJson(
+            `//musicbrainz.org/ws/2/artist?query=${encodeURIComponent(`alias:"${escaped}"`)}&fmt=json&limit=25`
+        );
+        const relatedHits = (aliasJson?.artists || []).filter(artist => relatedIds.has(artist.id));
+        const verified = (await Promise.all(
+            relatedHits.map(artist => getArtistContextDetails(artist.id))
+        )).filter(artist => artist && artistAliasMatches(searchName, artist));
+        const circle4 = dedupeContextCandidates(verified.map(contextCandidate));
+        if (circle4.length) return { circle: 4, matches: circle4 };
+    }
+
+    return { circle: 0, matches: [] };
+}
+
 /**
  * Resolve a single Discogs entity against MB using the 3-strategy chain.
  *
@@ -51,7 +239,7 @@ const KIND_TABLE = {
  * Returns one of the result shapes documented at the top of the file.
  */
 async function resolveEntity(entity, kind, opts) {
-    const { bypassIdb } = opts;
+    const { bypassIdb, releaseMbid } = opts;
     const { searchLimit, resultKey, incRels } = KIND_TABLE[kind];
 
     const parsed     = parseSourceEntityUrl(entity.resource_url);
@@ -190,7 +378,48 @@ async function resolveEntity(entity, kind, opts) {
         }
     }
 
-    // ── 2 + 3. Name search AND URL relation, in parallel ────────────────────
+    // ── 2. Contextual artist search ─────────────────────────────────────────
+    // Source URLs are already a stronger identity signal, so this is deliberately
+    // limited to name-only credits (Apple / Deezer / most Qobuz / Titles).
+    if (kind === 'artist' && !parsed && releaseMbid) {
+        try {
+            const contextual = await findContextArtistMatches(searchName, releaseMbid);
+            if (contextual.matches.length === 1) {
+                const hit = contextual.matches[0];
+                const mbUrl = `//musicbrainz.org/artist/${hit.id}`;
+                if (key) {
+                    await writeIdbRecord(key, {
+                        mbid: hit.id,
+                        entityType: 'artist',
+                        name: hit.name,
+                        disambiguation: hit.disambiguation || '',
+                        resolvedVia: 'context',
+                    });
+                }
+                logDebug(`context: "${searchName}" resolved in circle ${contextual.circle} -> ${hit.id}`);
+                return buildResolved(
+                    mbUrl, hit.name, hit.disambiguation || '',
+                    'context', 'artist', false, undefined
+                );
+            }
+            if (contextual.matches.length > 1) {
+                logDebug(`context: "${searchName}" ambiguous in circle ${contextual.circle} (${contextual.matches.length} matches)`);
+                return buildAttention(
+                    contextual.matches,
+                    false,
+                    `context circle ${contextual.circle}: ${contextual.matches.length} exact matches`,
+                    undefined,
+                );
+            }
+        } catch (e) {
+            // Context is an optimisation / confidence layer, never a hard
+            // dependency. A failed context lookup falls through to the existing
+            // global search rather than turning a resolvable credit into an error.
+            logDebug(`context: "${searchName}" lookup failed (${e?.message || e}) - falling back to global search`);
+        }
+    }
+
+    // ── 3 + 4. Global name search AND URL relation, in parallel ─────────────
     // The URL lookup uses `fetchJson404`: a 404 means "this URL isn't in MB"
     // (a real answer → no relations), while `null` means the lookup FAILED
     // (timeout / 429 storm). Conflating the two was the chip bug — a failed
@@ -344,11 +573,12 @@ async function resolveEntity(entity, kind, opts) {
  *   - `opts.progressLi`: DOM element to update with "M/N done — checking …".
  *   - `opts.progressLabel`: leading text for the progress line.
  *   - `opts.bypassIdb`: pass through to `resolveEntity`.
+ *   - `opts.releaseMbid`: enables contextual artist resolution for name-only credits.
  *
  * Returns `{ allResults: [...] }` with skipped entities filtered out.
  */
 export async function resolveAll(entities, opts) {
-    const { kindOf, progressLi, bypassIdb, progressLabel } = opts;
+    const { kindOf, progressLi, bypassIdb, progressLabel, releaseMbid } = opts;
     // 5 workers, each emitting up to 2 parallel MB requests (name +
     // URL) per entity. Briefly bumped to 10 per #87, then reverted: a
     // single import calls `resolveAll` twice in parallel (artists +
@@ -418,7 +648,7 @@ export async function resolveAll(entities, opts) {
             setProgress();
             const t0 = Date.now();
             logDebug(`${tag} resolving "${displayName}" (${kind})`);
-            results[index] = await resolveEntity(entity, kind, { bypassIdb });
+            results[index] = await resolveEntity(entity, kind, { bypassIdb, releaseMbid });
             const elapsed = Date.now() - t0;
             const r = results[index];
             const outcome = r?.type === 'resolved'
