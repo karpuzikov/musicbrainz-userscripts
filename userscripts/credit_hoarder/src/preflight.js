@@ -329,7 +329,7 @@ async function resolveEntity(entity, kind, opts) {
         const cachedRec = await readIdbRecord(key);
         if (cachedRec?.mbid && cachedRec?.entityType) {
             // Cache has an MBID. Preserve the ORIGINAL `resolvedVia` (how this
-            // record first got resolved — `name` / `url` / `both` / `context-c1..c4` / `user`) and
+            // record first got resolved — `name` / `url` / `both` / `user`) and
             // set `fromCache: true` separately. The UI composes both into a
             // label like `name (cache)`. Records written before `resolvedVia`
             // existed fall back to the literal `cache` (still flagged
@@ -387,20 +387,19 @@ async function resolveEntity(entity, kind, opts) {
             if (contextual.matches.length === 1) {
                 const hit = contextual.matches[0];
                 const mbUrl = `//musicbrainz.org/artist/${hit.id}`;
-                const contextVia = `context-c${contextual.circle}`;
                 if (key) {
                     await writeIdbRecord(key, {
                         mbid: hit.id,
                         entityType: 'artist',
                         name: hit.name,
                         disambiguation: hit.disambiguation || '',
-                        resolvedVia: contextVia,
+                        resolvedVia: 'context',
                     });
                 }
                 logDebug(`context: "${searchName}" resolved in circle ${contextual.circle} -> ${hit.id}`);
                 return buildResolved(
                     mbUrl, hit.name, hit.disambiguation || '',
-                    contextVia, 'artist', false, undefined
+                    'context', 'artist', false, undefined
                 );
             }
             if (contextual.matches.length > 1) {
