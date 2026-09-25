@@ -201,7 +201,7 @@ export async function showReviewTable(allResults, rolesMap, companiesRolesMap, o
         // Small pill that surfaces *how* an entity was resolved. Two facts
         // travel together:
         //   `via`       — the resolution mechanism (`name` / `url` / `both` /
-        //                 `context-c1..c4` / `user`, or `cache` for legacy IDB records that
+        //                 `context` / `user`, or `cache` for legacy IDB records that
         //                 predate the `resolvedVia` field).
         //   `fromCache` — whether THIS resolution was served from IDB rather
         //                 than a fresh MB lookup.
@@ -213,26 +213,19 @@ export async function showReviewTable(allResults, rolesMap, companiesRolesMap, o
         // mid-blue on a dark raised chip. Tokens instead: they carry the theme
         // with them, and the meaning (confident / resolved / weak) survives.
         const VIA_STYLES = {
-            both:         { text: 'name+url', color: 'var(--mbu-ok)' },          // high confidence
-            url:          { text: 'url',      color: 'var(--mbu-accent-text)' },
-            name:         { text: 'name',     color: 'var(--mbu-accent-text)' },
-            'context-c1': { text: 'C1', color: 'var(--mbu-ok)',          title: 'Contextual search C1: direct credited artist' },
-            'context-c2': { text: 'C2', color: 'var(--mbu-accent-text)', title: 'Contextual search C2: alias of a direct credited artist' },
-            'context-c3': { text: 'C3', color: 'var(--mbu-warn)',        title: 'Contextual search C3: artist related to a direct credited artist' },
-            'context-c4': { text: 'C4', color: 'var(--mbu-text-dim)',    title: 'Contextual search C4: alias of a related artist' },
-            user:         { text: 'user',     color: 'var(--mbu-text-dim)' },
-            cache:        { text: 'cache',    color: 'var(--mbu-text-dim)' },    // legacy: original mechanism unknown
+            both:  { text: 'name+url', color: 'var(--mbu-ok)' },          // high confidence
+            url:   { text: 'url',      color: 'var(--mbu-accent-text)' },
+            name:  { text: 'name',     color: 'var(--mbu-accent-text)' },
+            context:{ text: 'context',  color: 'var(--mbu-accent-text)' },
+            user:  { text: 'user',     color: 'var(--mbu-text-dim)' },
+            cache: { text: 'cache',    color: 'var(--mbu-text-dim)' },    // legacy: original mechanism unknown
         };
         /** Resolve a `(via, fromCache)` pair to `{ text, color }` for display. */
         function viaCfg(via, fromCache) {
             const base = VIA_STYLES[via];
             if (!base) return null;
             if (fromCache && via !== 'cache') {
-                return {
-                    ...base,
-                    text: `${base.text} (cache)`,
-                    title: `${base.title || `Resolved via ${via}`}, served from cache`,
-                };
+                return { text: `${base.text} (cache)`, color: base.color };
             }
             return base;
         }
@@ -241,7 +234,9 @@ export async function showReviewTable(allResults, rolesMap, companiesRolesMap, o
             if (!cfg) return null;
             const span = document.createElement('span');
             span.textContent = cfg.text;
-            span.title = cfg.title || `Resolved via ${via}`;
+            span.title = fromCache && via !== 'cache'
+                ? `Resolved via ${via}, served from cache`
+                : `Resolved via ${via}`;
             span.style.cssText = `font-size:0.68rem;background:var(--mbu-bg-raised);color:${cfg.color};` +
                                  `padding:0 0.35rem;border-radius:8px;border:1px solid var(--mbu-border);flex-shrink:0;`;
             return span;
