@@ -10,6 +10,7 @@
 // ── Lookup strategy per entity ─────────────────────────────────────────────
 //   1. IDB cache (`entity_cache` store) — instant; populated by prior runs.
 //   2. Name search + URL relation run **in parallel**:
+//       - artists: canonical name + alias search; labels/places: normal name search
 //       - `/ws/2/<type>?query=…&fmt=json`              (search by name)
 //       - `/ws/2/url?resource=<discogsUrl>&inc=<type>-rels`  (URL relation)
 //   3. Decide based on what the two parallel lookups produced:
@@ -197,9 +198,16 @@ async function resolveEntity(entity, kind, opts) {
     // lookup got recorded (and IDB-persisted!) as "no relations", so the
     // review table showed the 🔗 add-link button for already-linked URLs
     // until the focus-return recheck corrected it.
+    const escapedArtistQuery = String(searchName || '')
+        .replace(/\\/g, '\\\\')
+        .replace(/"/g, '\\"');
+    const nameQuery = kind === 'artist'
+        ? `artist:"${escapedArtistQuery}" OR alias:"${escapedArtistQuery}"`
+        : searchName;
+
     const [nameJson, urlJson] = await Promise.all([
         mbThrottle.fetchJson(
-            `//musicbrainz.org/ws/2/${kind}?query=${encodeURIComponent(searchName)}&fmt=json&limit=${searchLimit}`
+            `//musicbrainz.org/ws/2/${kind}?query=${encodeURIComponent(nameQuery)}&fmt=json&limit=${searchLimit}`
         ),
         parsed ? mbThrottle.fetchJson404(
             `//musicbrainz.org/ws/2/url?resource=${encodeURIComponent(parsed.cleanUrl)}&inc=${incRels}&fmt=json`
@@ -217,13 +225,24 @@ async function resolveEntity(entity, kind, opts) {
             name: a.name,
             disambiguation: a.disambiguation || a['disambiguation-comment'] || '',
             score: a.score || 0,
+            aliases: (a.aliases || []).map(alias =>
+                typeof alias === 'string' ? alias : alias?.name
+            ).filter(Boolean),
         }));
-    const exactNameMatches = nameMatches.filter(a => a.name.toLowerCase().trim() === normalized);
+    const exactNameMatches = nameMatches.filter(a => {
+        if (a.name.toLowerCase().trim() === normalized) return true;
+        return kind === 'artist' && a.aliases.some(alias =>
+            alias.toLowerCase().trim() === normalized
+        );
+    });
     const nameHit = exactNameMatches.length === 1 ? {
         kind,
         mbid:           exactNameMatches[0].id,
         name:           exactNameMatches[0].name,
         disambiguation: exactNameMatches[0].disambiguation || '',
+        via: exactNameMatches[0].name.toLowerCase().trim() === normalized
+            ? 'name'
+            : 'alias',
     } : null;
 
     // URL relation — extract the first matching rel (kind-specific; places
@@ -302,7 +321,7 @@ async function resolveEntity(entity, kind, opts) {
         via      = 'url';
     } else if (nameHit) {
         resolved = nameHit;
-        via      = 'name';
+        via      = nameHit.via || 'name';
     }
 
     if (resolved) {
