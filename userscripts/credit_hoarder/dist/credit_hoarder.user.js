@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Credit Hoarder
 // @namespace    majkinetor
-// @version      2026.9.24.154248
+// @version      2026.9.25.094600
 // @description  Import per-track release credits from streaming/database providers (Discogs, Tidal, Qobuz, Deezer) into MusicBrainz relationships, with a review phase
 // @author       majkinetor
 // @icon         data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij4KICANCiAgPGcgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMmY2ZjU0IiBzdHJva2Utd2lkdGg9IjkiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCI+DQogICAgPGNpcmNsZSBjeD0iMzQiIGN5PSIzOCIgcj0iMi41IiBmaWxsPSIjMmY2ZjU0IiBzdHJva2U9Im5vbmUiLz4NCiAgICA8bGluZSB4MT0iNTAiIHkxPSIzOCIgeDI9Ijk4IiB5Mj0iMzgiLz4NCiAgICA8Y2lyY2xlIGN4PSIzNCIgY3k9IjY0IiByPSIyLjUiIGZpbGw9IiMyZjZmNTQiIHN0cm9rZT0ibm9uZSIvPg0KICAgIDxsaW5lIHgxPSI1MCIgeTE9IjY0IiB4Mj0iOTgiIHkyPSI2NCIvPg0KICAgIDxjaXJjbGUgY3g9IjM0IiBjeT0iOTAiIHI9IjIuNSIgZmlsbD0iIzJmNmY1NCIgc3Ryb2tlPSJub25lIi8+DQogICAgPGxpbmUgeDE9IjUwIiB5MT0iOTAiIHgyPSI3NCIgeTI9IjkwIi8+DQogIDwvZz4NCiAgPGNpcmNsZSBjeD0iOTIiIGN5PSI5MiIgcj0iMjMiIGZpbGw9IiMyZTllNWIiLz4NCiAgPGcgc3Ryb2tlPSIjZmZmIiBzdHJva2Utd2lkdGg9IjciIHN0cm9rZS1saW5lY2FwPSJyb3VuZCI+DQogICAgPGxpbmUgeDE9IjkyIiB5MT0iODEiIHgyPSI5MiIgeTI9IjEwMyIvPg0KICAgIDxsaW5lIHgxPSI4MSIgeTE9IjkyIiB4Mj0iMTAzIiB5Mj0iOTIiLz4NCiAgPC9nPg0KPC9zdmc+DQo=
@@ -3325,9 +3325,11 @@
         return buildAttention(cachedRec.nameMatches, false, null, attnLinkedIds, cachedRec.creditOverride);
       }
     }
+    const escapedArtistQuery = String(searchName || "").replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+    const nameQuery = kind === "artist" ? `artist:"${escapedArtistQuery}" OR alias:"${escapedArtistQuery}"` : searchName;
     const [nameJson, urlJson] = await Promise.all([
       mbThrottle.fetchJson(
-        `//musicbrainz.org/ws/2/${kind}?query=${encodeURIComponent(searchName)}&fmt=json&limit=${searchLimit}`
+        `//musicbrainz.org/ws/2/${kind}?query=${encodeURIComponent(nameQuery)}&fmt=json&limit=${searchLimit}`
       ),
       parsed ? mbThrottle.fetchJson404(
         `//musicbrainz.org/ws/2/url?resource=${encodeURIComponent(parsed.cleanUrl)}&inc=${incRels}&fmt=json`
@@ -3339,14 +3341,19 @@
       id: a.id,
       name: a.name,
       disambiguation: a.disambiguation || a["disambiguation-comment"] || "",
-      score: a.score || 0
+      score: a.score || 0,
+      aliases: (a.aliases || []).map((alias) => typeof alias === "string" ? alias : alias?.name).filter(Boolean)
     }));
-    const exactNameMatches = nameMatches.filter((a) => a.name.toLowerCase().trim() === normalized);
+    const exactNameMatches = nameMatches.filter((a) => {
+      if (a.name.toLowerCase().trim() === normalized) return true;
+      return kind === "artist" && a.aliases.some((alias) => alias.toLowerCase().trim() === normalized);
+    });
     const nameHit = exactNameMatches.length === 1 ? {
       kind,
       mbid: exactNameMatches[0].id,
       name: exactNameMatches[0].name,
-      disambiguation: exactNameMatches[0].disambiguation || ""
+      disambiguation: exactNameMatches[0].disambiguation || "",
+      via: exactNameMatches[0].name.toLowerCase().trim() === normalized ? "name" : "alias"
     } : null;
     let urlHit = null;
     const urlLinkedIds = urlJson === null ? void 0 : (urlJson.relations || []).map((r) => kind === "place" ? r.place?.id || r.label?.id || null : r[kind]?.id || null).filter(Boolean);
@@ -3398,7 +3405,7 @@
       via = "url";
     } else if (nameHit) {
       resolved = nameHit;
-      via = "name";
+      via = nameHit.via || "name";
     }
     if (resolved) {
       const mbUrl = `//musicbrainz.org/${resolved.kind}/${resolved.mbid}`;
@@ -3809,6 +3816,54 @@ ${ourBlock}` : ourBlock;
       } catch (e) {
       }
     }
+    const _artistAliasDetails = /* @__PURE__ */ new Map();
+    function normalizedAliasName(value) {
+      return String(value || "").trim().toLowerCase();
+    }
+    async function artistAliasDetails(mbid) {
+      if (!_artistAliasDetails.has(mbid)) {
+        _artistAliasDetails.set(mbid, mbThrottle.fetchJson(`//musicbrainz.org/ws/2/artist/${mbid}?inc=aliases&fmt=json`));
+      }
+      return _artistAliasDetails.get(mbid);
+    }
+    function artistAlreadyHasName(details, name) {
+      const wanted = normalizedAliasName(name);
+      if (!wanted || !details) return false;
+      if ([details.name, details["sort-name"]].some((value) => normalizedAliasName(value) === wanted)) return true;
+      return (details.aliases || []).some((alias) => normalizedAliasName(typeof alias === "string" ? alias : alias?.name) === wanted);
+    }
+    async function submitArtistAlias(mbid, aliasName, artistName) {
+      const addAliasUrl = `/artist/${encodeURIComponent(mbid)}/add-alias`;
+      const page = await fetch(addAliasUrl, {
+        credentials: "same-origin",
+        headers: { Accept: "text/html,application/xhtml+xml" }
+      });
+      if (!page.ok) throw new Error(`Could not open alias editor (HTTP ${page.status})`);
+      const doc = new DOMParser().parseFromString(await page.text(), "text/html");
+      const form = [...doc.forms].find((item) => item.querySelector('[name="edit-alias.name"]'));
+      if (!form) throw new Error("MusicBrainz alias form was not found");
+      const params = new URLSearchParams();
+      for (const [key, value] of new FormData(form).entries()) {
+        if (typeof value === "string") params.append(key, value);
+      }
+      params.set("edit-alias.name", aliasName);
+      params.set("edit-alias.sort_name", aliasName);
+      params.set("edit-alias.type_id", "1");
+      const noteField = form.querySelector('textarea[name*="edit_note"], textarea[name*="edit-note"], textarea[name*="editnote"]');
+      if (!noteField?.name) throw new Error("MusicBrainz edit-note field was not found");
+      params.set(noteField.name, buildCreateNote(`Added artist alias "${aliasName}" after manually confirming the source credit as ${artistName}`));
+      const action = new URL(form.getAttribute("action") || addAliasUrl, location.origin).href;
+      const response = await fetch(action, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
+        body: params
+      });
+      if (!response.ok) throw new Error(`Alias edit failed (HTTP ${response.status})`);
+      const finalPath = new URL(response.url).pathname;
+      if (finalPath.endsWith("/add-alias")) throw new Error("MusicBrainz did not accept the alias edit");
+      _artistAliasDetails.delete(mbid);
+    }
     return new Promise((resolve) => {
       opts?.registerAbort?.(() => resolve(null));
       const rowState = /* @__PURE__ */ new Map();
@@ -3886,6 +3941,7 @@ ${ourBlock}` : ourBlock;
         // high confidence
         url: { text: "url", color: "var(--mbu-accent-text)" },
         name: { text: "name", color: "var(--mbu-accent-text)" },
+        alias: { text: "alias", color: "var(--mbu-accent-text)" },
         user: { text: "user", color: "var(--mbu-text-dim)" },
         cache: { text: "cache", color: "var(--mbu-text-dim)" }
         // legacy: original mechanism unknown
@@ -4527,6 +4583,39 @@ Leave empty to use the default (${srcName} name, or MB's most-frequent existing 
           if (viaBadge) selRow.appendChild(viaBadge);
           const mbRolesEl = buildMbRolesEl();
           if (mbRolesEl) selRow.appendChild(mbRolesEl);
+          if (entityType === "artist" && !r.entity?.resource_url) {
+            const sourceCreditName = String(r.entity?.anv && r.entity.anv.trim() || r.entity?.name || "").trim();
+            if (sourceCreditName && normalizedAliasName(sourceCreditName) !== normalizedAliasName(a.name)) {
+              const aliasBtn = document.createElement("button");
+              aliasBtn.textContent = "+ alias";
+              aliasBtn.title = `Add "${sourceCreditName}" as a MusicBrainz alias for ${a.name}`;
+              aliasBtn.style.cssText = "font-size:0.75rem;cursor:pointer;padding:0 0.3rem;";
+              aliasBtn.disabled = true;
+              selRow.appendChild(aliasBtn);
+              artistAliasDetails(a.id).then((details) => {
+                if (!details || artistAlreadyHasName(details, sourceCreditName)) {
+                  aliasBtn.remove();
+                  return;
+                }
+                aliasBtn.disabled = false;
+              }).catch(() => aliasBtn.remove());
+              aliasBtn.addEventListener("click", async () => {
+                aliasBtn.disabled = true;
+                const oldText = aliasBtn.textContent;
+                aliasBtn.textContent = "adding alias...";
+                try {
+                  await submitArtistAlias(a.id, sourceCreditName, a.name);
+                  aliasBtn.textContent = "alias added";
+                  aliasBtn.title = `Added "${sourceCreditName}" as an alias for ${a.name}`;
+                } catch (e) {
+                  aliasBtn.disabled = false;
+                  aliasBtn.textContent = oldText;
+                  aliasBtn.title = `Alias edit failed: ${e?.message || e}`;
+                  log.error(`Alias "${sourceCreditName}" -> ${a.name} failed: ${e?.message || e}`);
+                }
+              });
+            }
+          }
           selRow.appendChild(undoBtn);
           candidateList.appendChild(selRow);
           renderActions(a);
