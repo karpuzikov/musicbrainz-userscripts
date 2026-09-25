@@ -2391,6 +2391,7 @@ function runSourcePipeline({ companies, artistRoles, tracklistRels, tracklist, s
                         progressLabel: 'Checking artists against MusicBrainz',
                         kindOf:        ENTITY_KIND,
                         bypassIdb,
+                        releaseMbid:    _relMbid,
                     });
                     const companyResults = await resolveAll(uniqueCompanies, {
                         progressLi:    companyProgressLi,
