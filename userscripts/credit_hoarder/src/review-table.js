@@ -201,7 +201,7 @@ export async function showReviewTable(allResults, rolesMap, companiesRolesMap, o
         // Small pill that surfaces *how* an entity was resolved. Two facts
         // travel together:
         //   `via`       — the resolution mechanism (`name` / `url` / `both` /
-        //                 `user`, or `cache` for legacy IDB records that
+        //                 `context` / `user`, or `cache` for legacy IDB records that
         //                 predate the `resolvedVia` field).
         //   `fromCache` — whether THIS resolution was served from IDB rather
         //                 than a fresh MB lookup.
@@ -216,6 +216,7 @@ export async function showReviewTable(allResults, rolesMap, companiesRolesMap, o
             both:  { text: 'name+url', color: 'var(--mbu-ok)' },          // high confidence
             url:   { text: 'url',      color: 'var(--mbu-accent-text)' },
             name:  { text: 'name',     color: 'var(--mbu-accent-text)' },
+            context:{ text: 'context',  color: 'var(--mbu-accent-text)' },
             user:  { text: 'user',     color: 'var(--mbu-text-dim)' },
             cache: { text: 'cache',    color: 'var(--mbu-text-dim)' },    // legacy: original mechanism unknown
         };
