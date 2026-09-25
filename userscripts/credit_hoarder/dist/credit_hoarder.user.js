@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Credit Hoarder
 // @namespace    majkinetor
-// @version      2026.9.25.124500
+// @version      2026.9.25.124700
 // @description  Import per-track release credits from streaming/database providers (Discogs, Tidal, Qobuz, Deezer) into MusicBrainz relationships, with a review phase
 // @author       majkinetor
 // @icon         data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij4KICANCiAgPGcgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMmY2ZjU0IiBzdHJva2Utd2lkdGg9IjkiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCI+DQogICAgPGNpcmNsZSBjeD0iMzQiIGN5PSIzOCIgcj0iMi41IiBmaWxsPSIjMmY2ZjU0IiBzdHJva2U9Im5vbmUiLz4NCiAgICA8bGluZSB4MT0iNTAiIHkxPSIzOCIgeDI9Ijk4IiB5Mj0iMzgiLz4NCiAgICA8Y2lyY2xlIGN4PSIzNCIgY3k9IjY0IiByPSIyLjUiIGZpbGw9IiMyZjZmNTQiIHN0cm9rZT0ibm9uZSIvPg0KICAgIDxsaW5lIHgxPSI1MCIgeTE9IjY0IiB4Mj0iOTgiIHkyPSI2NCIvPg0KICAgIDxjaXJjbGUgY3g9IjM0IiBjeT0iOTAiIHI9IjIuNSIgZmlsbD0iIzJmNmY1NCIgc3Ryb2tlPSJub25lIi8+DQogICAgPGxpbmUgeDE9IjUwIiB5MT0iOTAiIHgyPSI3NCIgeTI9IjkwIi8+DQogIDwvZz4NCiAgPGNpcmNsZSBjeD0iOTIiIGN5PSI5MiIgcj0iMjMiIGZpbGw9IiMyZTllNWIiLz4NCiAgPGcgc3Ryb2tlPSIjZmZmIiBzdHJva2Utd2lkdGg9IjciIHN0cm9rZS1saW5lY2FwPSJyb3VuZCI+DQogICAgPGxpbmUgeDE9IjkyIiB5MT0iODEiIHgyPSI5MiIgeTI9IjEwMyIvPg0KICAgIDxsaW5lIHgxPSI4MSIgeTE9IjkyIiB4Mj0iMTAzIiB5Mj0iOTIiLz4NCiAgPC9nPg0KPC9zdmc+DQo=
@@ -3427,10 +3427,9 @@
         if (contextual.matches.length === 1) {
           const hit = contextual.matches[0];
           const mbUrl = `//musicbrainz.org/artist/${hit.id}`;
-          const contextVia = `context-c${contextual.circle}`;
-          if (key) await writeIdbRecord(key, { mbid: hit.id, entityType: "artist", name: hit.name, disambiguation: hit.disambiguation || "", resolvedVia: contextVia });
+          if (key) await writeIdbRecord(key, { mbid: hit.id, entityType: "artist", name: hit.name, disambiguation: hit.disambiguation || "", resolvedVia: "context" });
           logDebug(`context: "${searchName}" resolved in circle ${contextual.circle} -> ${hit.id}`);
-          return buildResolved(mbUrl, hit.name, hit.disambiguation || "", contextVia, "artist", false, void 0);
+          return buildResolved(mbUrl, hit.name, hit.disambiguation || "", "context", "artist", false, void 0);
         }
         if (contextual.matches.length > 1) {
           logDebug(`context: "${searchName}" ambiguous in circle ${contextual.circle} (${contextual.matches.length} matches)`);
@@ -4001,10 +4000,7 @@ ${ourBlock}` : ourBlock;
         // high confidence
         url: { text: "url", color: "var(--mbu-accent-text)" },
         name: { text: "name", color: "var(--mbu-accent-text)" },
-        "context-c1": { text: "C1", color: "var(--mbu-ok)", title: "Contextual search C1: direct credited artist" },
-        "context-c2": { text: "C2", color: "var(--mbu-accent-text)", title: "Contextual search C2: alias of a direct credited artist" },
-        "context-c3": { text: "C3", color: "var(--mbu-warn)", title: "Contextual search C3: artist related to a direct credited artist" },
-        "context-c4": { text: "C4", color: "var(--mbu-text-dim)", title: "Contextual search C4: alias of a related artist" },
+        context: { text: "context", color: "var(--mbu-accent-text)" },
         user: { text: "user", color: "var(--mbu-text-dim)" },
         cache: { text: "cache", color: "var(--mbu-text-dim)" }
         // legacy: original mechanism unknown
@@ -4013,11 +4009,7 @@ ${ourBlock}` : ourBlock;
         const base = VIA_STYLES[via];
         if (!base) return null;
         if (fromCache && via !== "cache") {
-          return {
-            ...base,
-            text: `${base.text} (cache)`,
-            title: `${base.title || `Resolved via ${via}`}, served from cache`
-          };
+          return { text: `${base.text} (cache)`, color: base.color };
         }
         return base;
       }
@@ -4026,7 +4018,7 @@ ${ourBlock}` : ourBlock;
         if (!cfg) return null;
         const span = document.createElement("span");
         span.textContent = cfg.text;
-        span.title = cfg.title || `Resolved via ${via}`;
+        span.title = fromCache && via !== "cache" ? `Resolved via ${via}, served from cache` : `Resolved via ${via}`;
         span.style.cssText = `font-size:0.68rem;background:var(--mbu-bg-raised);color:${cfg.color};padding:0 0.35rem;border-radius:8px;border:1px solid var(--mbu-border);flex-shrink:0;`;
         return span;
       }
