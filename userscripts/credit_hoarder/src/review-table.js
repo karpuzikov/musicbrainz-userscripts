@@ -98,6 +98,86 @@ export async function showReviewTable(allResults, rolesMap, companiesRolesMap, o
         } catch(e) {}
     }
 
+    const _artistAliasDetails = new Map();
+
+    function normalizedAliasName(value) {
+        return String(value || '').trim().toLowerCase();
+    }
+
+    async function artistAliasDetails(mbid) {
+        if (!_artistAliasDetails.has(mbid)) {
+            _artistAliasDetails.set(
+                mbid,
+                mbThrottle.fetchJson(
+                    `//musicbrainz.org/ws/2/artist/${mbid}?inc=aliases&fmt=json`
+                )
+            );
+        }
+        return _artistAliasDetails.get(mbid);
+    }
+
+    function artistAlreadyHasName(details, name) {
+        const wanted = normalizedAliasName(name);
+        if (!wanted || !details) return false;
+        if ([details.name, details['sort-name']].some(value =>
+            normalizedAliasName(value) === wanted
+        )) return true;
+        return (details.aliases || []).some(alias =>
+            normalizedAliasName(typeof alias === 'string' ? alias : alias?.name) === wanted
+        );
+    }
+
+    async function submitArtistAlias(mbid, aliasName, artistName) {
+        const addAliasUrl = `/artist/${encodeURIComponent(mbid)}/add-alias`;
+        const page = await fetch(addAliasUrl, {
+            credentials: 'same-origin',
+            headers: { Accept: 'text/html,application/xhtml+xml' },
+        });
+        if (!page.ok) throw new Error(`Could not open alias editor (HTTP ${page.status})`);
+
+        const doc = new DOMParser().parseFromString(await page.text(), 'text/html');
+        const form = [...doc.forms].find(item =>
+            item.querySelector('[name="edit-alias.name"]')
+        );
+        if (!form) throw new Error('MusicBrainz alias form was not found');
+
+        const params = new URLSearchParams();
+        for (const [key, value] of new FormData(form).entries()) {
+            if (typeof value === 'string') params.append(key, value);
+        }
+
+        params.set('edit-alias.name', aliasName);
+        params.set('edit-alias.sort_name', aliasName);
+        params.set('edit-alias.type_id', '1');
+
+        const noteField = form.querySelector(
+            'textarea[name*="edit_note"], textarea[name*="edit-note"], textarea[name*="editnote"]'
+        );
+        if (!noteField?.name) throw new Error('MusicBrainz edit-note field was not found');
+        params.set(
+            noteField.name,
+            buildCreateNote(
+                `Added artist alias "${aliasName}" after manually confirming the source credit as ${artistName}`
+            )
+        );
+
+        const action = new URL(form.getAttribute('action') || addAliasUrl, location.origin).href;
+        const response = await fetch(action, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+            body: params,
+        });
+        if (!response.ok) throw new Error(`Alias edit failed (HTTP ${response.status})`);
+
+        const finalPath = new URL(response.url).pathname;
+        if (finalPath.endsWith('/add-alias')) {
+            throw new Error('MusicBrainz did not accept the alias edit');
+        }
+
+        _artistAliasDetails.delete(mbid);
+    }
+
     return new Promise(resolve => {
         // `opts.registerAbort` — hand the caller (ui-bar's cancelRun) a way to
         // resolve this promise with `null`, so a mid-review cancel unwinds the
@@ -200,7 +280,7 @@ export async function showReviewTable(allResults, rolesMap, companiesRolesMap, o
         // ── Helpers shared across rows ─────────────────────────────────────
         // Small pill that surfaces *how* an entity was resolved. Two facts
         // travel together:
-        //   `via`       — the resolution mechanism (`name` / `url` / `both` /
+        //   `via`       — the resolution mechanism (`name` / `alias` / `url` / `both` /
         //                 `user`, or `cache` for legacy IDB records that
         //                 predate the `resolvedVia` field).
         //   `fromCache` — whether THIS resolution was served from IDB rather
@@ -216,6 +296,7 @@ export async function showReviewTable(allResults, rolesMap, companiesRolesMap, o
             both:  { text: 'name+url', color: 'var(--mbu-ok)' },          // high confidence
             url:   { text: 'url',      color: 'var(--mbu-accent-text)' },
             name:  { text: 'name',     color: 'var(--mbu-accent-text)' },
+            alias: { text: 'alias',    color: 'var(--mbu-accent-text)' },
             user:  { text: 'user',     color: 'var(--mbu-text-dim)' },
             cache: { text: 'cache',    color: 'var(--mbu-text-dim)' },    // legacy: original mechanism unknown
         };
@@ -1075,6 +1156,49 @@ export async function showReviewTable(allResults, rolesMap, companiesRolesMap, o
                 if (viaBadge) selRow.appendChild(viaBadge);
                 const mbRolesEl = buildMbRolesEl();
                 if (mbRolesEl) selRow.appendChild(mbRolesEl);
+
+                // Name-only provider credits have no stable provider artist ID. Once
+                // the user manually confirms the MB artist, offer to persist that
+                // exact source spelling as an MB alias so future imports can resolve
+                // it directly. Never create aliases from automatic guesses.
+                if (entityType === 'artist' && !r.entity?.resource_url) {
+                    const sourceCreditName = String(
+                        (r.entity?.anv && r.entity.anv.trim()) || r.entity?.name || ''
+                    ).trim();
+                    if (sourceCreditName && normalizedAliasName(sourceCreditName) !== normalizedAliasName(a.name)) {
+                        const aliasBtn = document.createElement('button');
+                        aliasBtn.textContent = '+ alias';
+                        aliasBtn.title = `Add "${sourceCreditName}" as a MusicBrainz alias for ${a.name}`;
+                        aliasBtn.style.cssText = 'font-size:0.75rem;cursor:pointer;padding:0 0.3rem;';
+                        aliasBtn.disabled = true;
+                        selRow.appendChild(aliasBtn);
+
+                        artistAliasDetails(a.id).then(details => {
+                            if (!details || artistAlreadyHasName(details, sourceCreditName)) {
+                                aliasBtn.remove();
+                                return;
+                            }
+                            aliasBtn.disabled = false;
+                        }).catch(() => aliasBtn.remove());
+
+                        aliasBtn.addEventListener('click', async () => {
+                            aliasBtn.disabled = true;
+                            const oldText = aliasBtn.textContent;
+                            aliasBtn.textContent = 'adding alias...';
+                            try {
+                                await submitArtistAlias(a.id, sourceCreditName, a.name);
+                                aliasBtn.textContent = 'alias added';
+                                aliasBtn.title = `Added "${sourceCreditName}" as an alias for ${a.name}`;
+                            } catch (e) {
+                                aliasBtn.disabled = false;
+                                aliasBtn.textContent = oldText;
+                                aliasBtn.title = `Alias edit failed: ${e?.message || e}`;
+                                log.error(`Alias "${sourceCreditName}" -> ${a.name} failed: ${e?.message || e}`);
+                            }
+                        });
+                    }
+                }
+
                 selRow.appendChild(undoBtn);
                 candidateList.appendChild(selRow);
 
