@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Credit Hoarder
 // @namespace    majkinetor
-// @version      2026.9.24.154248
+// @version      2026.9.25.094500
 // @description  Import per-track release credits from streaming/database providers (Discogs, Tidal, Qobuz, Deezer) into MusicBrainz relationships, with a review phase
 // @author       majkinetor
 // @icon         data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij4KICANCiAgPGcgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMmY2ZjU0IiBzdHJva2Utd2lkdGg9IjkiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCI+DQogICAgPGNpcmNsZSBjeD0iMzQiIGN5PSIzOCIgcj0iMi41IiBmaWxsPSIjMmY2ZjU0IiBzdHJva2U9Im5vbmUiLz4NCiAgICA8bGluZSB4MT0iNTAiIHkxPSIzOCIgeDI9Ijk4IiB5Mj0iMzgiLz4NCiAgICA8Y2lyY2xlIGN4PSIzNCIgY3k9IjY0IiByPSIyLjUiIGZpbGw9IiMyZjZmNTQiIHN0cm9rZT0ibm9uZSIvPg0KICAgIDxsaW5lIHgxPSI1MCIgeTE9IjY0IiB4Mj0iOTgiIHkyPSI2NCIvPg0KICAgIDxjaXJjbGUgY3g9IjM0IiBjeT0iOTAiIHI9IjIuNSIgZmlsbD0iIzJmNmY1NCIgc3Ryb2tlPSJub25lIi8+DQogICAgPGxpbmUgeDE9IjUwIiB5MT0iOTAiIHgyPSI3NCIgeTI9IjkwIi8+DQogIDwvZz4NCiAgPGNpcmNsZSBjeD0iOTIiIGN5PSI5MiIgcj0iMjMiIGZpbGw9IiMyZTllNWIiLz4NCiAgPGcgc3Ryb2tlPSIjZmZmIiBzdHJva2Utd2lkdGg9IjciIHN0cm9rZS1saW5lY2FwPSJyb3VuZCI+DQogICAgPGxpbmUgeDE9IjkyIiB5MT0iODEiIHgyPSI5MiIgeTI9IjEwMyIvPg0KICAgIDxsaW5lIHgxPSI4MSIgeTE9IjkyIiB4Mj0iMTAzIiB5Mj0iOTIiLz4NCiAgPC9nPg0KPC9zdmc+DQo=
@@ -3208,8 +3208,104 @@
     // since the original company resolver).
     place: { searchLimit: 8, resultKey: "places", incRels: "place-rels+label-rels" }
   };
+  var _releaseArtistContextPromises = /* @__PURE__ */ new Map();
+  var _artistContextDetailPromises = /* @__PURE__ */ new Map();
+  function normalizeArtistName(value) {
+    return String(value || "").trim().toLowerCase();
+  }
+  function sameArtistName(left, right) {
+    return normalizeArtistName(left) === normalizeArtistName(right);
+  }
+  function artistCanonicalNameMatches(name, artist) {
+    return [artist?.name, artist?.["sort-name"], artist?.sortName].filter(Boolean).some((value) => sameArtistName(name, value));
+  }
+  function artistAliasMatches(name, artist) {
+    return (artist?.aliases || []).some((alias) => sameArtistName(name, typeof alias === "string" ? alias : alias?.name));
+  }
+  function collectReleaseCreditedArtists(release) {
+    const artists = /* @__PURE__ */ new Map();
+    function addCredit(credit, scope) {
+      for (const entry of credit || []) {
+        const artist = entry?.artist;
+        if (!artist?.id) continue;
+        let item = artists.get(artist.id);
+        if (!item) {
+          item = { ...artist, creditedNames: /* @__PURE__ */ new Set(), scopes: /* @__PURE__ */ new Set() };
+          artists.set(artist.id, item);
+        }
+        if (entry?.name) item.creditedNames.add(String(entry.name));
+        if (artist.name) item.creditedNames.add(String(artist.name));
+        item.scopes.add(scope);
+      }
+    }
+    addCredit(release?.["artist-credit"], "release");
+    for (const medium of release?.media || []) {
+      for (const track of medium?.tracks || []) {
+        addCredit(track?.["artist-credit"], "track");
+        addCredit(track?.recording?.["artist-credit"], "recording");
+      }
+    }
+    return [...artists.values()];
+  }
+  async function getArtistContextDetails(mbid) {
+    if (!_artistContextDetailPromises.has(mbid)) {
+      _artistContextDetailPromises.set(mbid, mbThrottle.fetchJson(`//musicbrainz.org/ws/2/artist/${mbid}?inc=aliases+artist-rels&fmt=json`));
+    }
+    return _artistContextDetailPromises.get(mbid);
+  }
+  async function getReleaseArtistContext(releaseMbid) {
+    if (!releaseMbid) return null;
+    if (!_releaseArtistContextPromises.has(releaseMbid)) {
+      _releaseArtistContextPromises.set(releaseMbid, (async () => {
+        const release = await mbThrottle.fetchJson(`//musicbrainz.org/ws/2/release/${releaseMbid}?inc=artist-credits+recordings&fmt=json`);
+        if (!release) return null;
+        return { releaseMbid, directArtists: collectReleaseCreditedArtists(release) };
+      })());
+    }
+    return _releaseArtistContextPromises.get(releaseMbid);
+  }
+  function contextCandidate(artist) {
+    return { id: artist.id, name: artist.name || "", disambiguation: artist.disambiguation || artist["disambiguation-comment"] || "", score: 100 };
+  }
+  function dedupeContextCandidates(candidates) {
+    return [...new Map(candidates.filter((candidate) => candidate?.id).map((candidate) => [candidate.id, candidate])).values()];
+  }
+  async function findContextArtistMatches(searchName, releaseMbid) {
+    const context = await getReleaseArtistContext(releaseMbid);
+    if (!context?.directArtists?.length) return { circle: 0, matches: [] };
+    const circle1 = dedupeContextCandidates(context.directArtists.filter((artist) =>
+      artistCanonicalNameMatches(searchName, artist) || [...artist.creditedNames || []].some((name) => sameArtistName(searchName, name))
+    ).map(contextCandidate));
+    if (circle1.length) return { circle: 1, matches: circle1 };
+    const directDetails = (await Promise.all(context.directArtists.map((artist) => getArtistContextDetails(artist.id)))).filter(Boolean);
+    const circle2 = dedupeContextCandidates(directDetails.filter((artist) => artistAliasMatches(searchName, artist)).map(contextCandidate));
+    if (circle2.length) return { circle: 2, matches: circle2 };
+    const relatedContexts = [];
+    for (const root of directDetails) {
+      for (const relation of root.relations || []) {
+        const related = relation?.artist;
+        if (!related?.id) continue;
+        relatedContexts.push({ root, relation, related });
+      }
+    }
+    const circle3 = dedupeContextCandidates(relatedContexts.filter(({ relation, related }) => {
+      const relationshipCredits = [relation?.["source-credit"], relation?.["target-credit"]].filter(Boolean);
+      return artistCanonicalNameMatches(searchName, related) || relationshipCredits.some((value) => sameArtistName(searchName, value));
+    }).map(({ related }) => contextCandidate(related)));
+    if (circle3.length) return { circle: 3, matches: circle3 };
+    const relatedIds = new Set(relatedContexts.map(({ related }) => related.id));
+    if (relatedIds.size) {
+      const escaped = String(searchName || "").replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+      const aliasJson = await mbThrottle.fetchJson(`//musicbrainz.org/ws/2/artist?query=${encodeURIComponent(`alias:"${escaped}"`)}&fmt=json&limit=25`);
+      const relatedHits = (aliasJson?.artists || []).filter((artist) => relatedIds.has(artist.id));
+      const verified = (await Promise.all(relatedHits.map((artist) => getArtistContextDetails(artist.id)))).filter((artist) => artist && artistAliasMatches(searchName, artist));
+      const circle4 = dedupeContextCandidates(verified.map(contextCandidate));
+      if (circle4.length) return { circle: 4, matches: circle4 };
+    }
+    return { circle: 0, matches: [] };
+  }
   async function resolveEntity(entity, kind, opts) {
-    const { bypassIdb } = opts;
+    const { bypassIdb, releaseMbid } = opts;
     const { searchLimit, resultKey, incRels } = KIND_TABLE[kind];
     const parsed = parseSourceEntityUrl(entity.resource_url);
     const key = parsed?.key || entity._cacheKey || null;
@@ -3325,6 +3421,24 @@
         return buildAttention(cachedRec.nameMatches, false, null, attnLinkedIds, cachedRec.creditOverride);
       }
     }
+    if (kind === "artist" && !parsed && releaseMbid) {
+      try {
+        const contextual = await findContextArtistMatches(searchName, releaseMbid);
+        if (contextual.matches.length === 1) {
+          const hit = contextual.matches[0];
+          const mbUrl = `//musicbrainz.org/artist/${hit.id}`;
+          if (key) await writeIdbRecord(key, { mbid: hit.id, entityType: "artist", name: hit.name, disambiguation: hit.disambiguation || "", resolvedVia: "context" });
+          logDebug(`context: "${searchName}" resolved in circle ${contextual.circle} -> ${hit.id}`);
+          return buildResolved(mbUrl, hit.name, hit.disambiguation || "", "context", "artist", false, void 0);
+        }
+        if (contextual.matches.length > 1) {
+          logDebug(`context: "${searchName}" ambiguous in circle ${contextual.circle} (${contextual.matches.length} matches)`);
+          return buildAttention(contextual.matches, false, `context circle ${contextual.circle}: ${contextual.matches.length} exact matches`, void 0);
+        }
+      } catch (e) {
+        logDebug(`context: "${searchName}" lookup failed (${e?.message || e}) - falling back to global search`);
+      }
+    }
     const [nameJson, urlJson] = await Promise.all([
       mbThrottle.fetchJson(
         `//musicbrainz.org/ws/2/${kind}?query=${encodeURIComponent(searchName)}&fmt=json&limit=${searchLimit}`
@@ -3426,7 +3540,7 @@
     return buildAttention(nameMatches, nameSearchFailed, null, urlLinkedIds);
   }
   async function resolveAll(entities, opts) {
-    const { kindOf, progressLi, bypassIdb, progressLabel } = opts;
+    const { kindOf, progressLi, bypassIdb, progressLabel, releaseMbid } = opts;
     const CONCURRENCY = 5;
     const MIN_GAP_MS = 50;
     let done = 0;
@@ -3471,7 +3585,7 @@
         setProgress();
         const t0 = Date.now();
         logDebug(`${tag} resolving "${displayName}" (${kind})`);
-        results[index] = await resolveEntity(entity, kind, { bypassIdb });
+        results[index] = await resolveEntity(entity, kind, { bypassIdb, releaseMbid });
         const elapsed = Date.now() - t0;
         const r = results[index];
         const outcome = r?.type === "resolved" ? `resolved via ${r.logEntry?.via || "?"}${r.logEntry?.fromCache ? " (cache)" : ""}` : r?.type === "attention" ? `unresolved (${r.nameMatches?.length || 0} candidates)` : "skipped";
@@ -3886,6 +4000,7 @@ ${ourBlock}` : ourBlock;
         // high confidence
         url: { text: "url", color: "var(--mbu-accent-text)" },
         name: { text: "name", color: "var(--mbu-accent-text)" },
+        context: { text: "context", color: "var(--mbu-accent-text)" },
         user: { text: "user", color: "var(--mbu-text-dim)" },
         cache: { text: "cache", color: "var(--mbu-text-dim)" }
         // legacy: original mechanism unknown
@@ -8483,7 +8598,8 @@ ${lines}
           progressLi: artistProgressLi,
           progressLabel: "Checking artists against MusicBrainz",
           kindOf: ENTITY_KIND,
-          bypassIdb
+          bypassIdb,
+          releaseMbid: _relMbid
         });
         const companyResults = await resolveAll(uniqueCompanies, {
           progressLi: companyProgressLi,
