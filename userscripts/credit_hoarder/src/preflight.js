@@ -9,23 +9,20 @@
 //
 // ── Lookup strategy per entity ─────────────────────────────────────────────
 //   1. IDB cache (`entity_cache` store) — instant; populated by prior runs.
-//   2. Name-only artists: search the current release context first:
+//   2. Artists: search the current release context:
 //       - directly credited release / track / recording artists
 //       - aliases of those directly credited artists
 //       - artists connected to them by artist↔artist relationships
 //       - aliases of those connected artists
-//      Stop at the first circle with an exact match; ambiguous circles stay
-//      unresolved for review. Only then fall through to the global search.
-//   3. Name search + URL relation run **in parallel**:
-//       - `/ws/2/<type>?query=…&fmt=json`              (search by name)
-//       - `/ws/2/url?resource=<discogsUrl>&inc=<type>-rels`  (URL relation)
-//   3. Decide based on what the two parallel lookups produced:
-//       - name **and** URL agree (same MBID) → `resolvedVia: 'both'`
-//       - URL-only (direct URL relation, strong) → `resolvedVia: 'url'`
-//       - name-only (exact-name single match) → `resolvedVia: 'name'`
-//       - they disagree → unresolved (user reviews; caught a latent bug
-//         where the old code would silently auto-pick one)
-//       - neither hit → unresolved
+//      Context is checked for every artist credit, including credits that also
+//      carry a provider URL.
+//   3. Context, global name search, and URL relation are combined as evidence:
+//       - URL + context agree → resolve
+//       - URL disambiguates a contextual multi-match → resolve to the URL target
+//       - URL + context disagree → unresolved for manual review
+//       - context + global exact-name disagree (with no URL target) → review
+//       - context-only exact match → `resolvedVia: 'context'`
+//       - otherwise preserve the existing name / URL resolver behavior.
 //
 // Result shape per entity is one of:
 //   { type: 'resolved',  entity, mbUrl, mbName, mbDisambig, logEntry: {...} }
@@ -378,55 +375,25 @@ async function resolveEntity(entity, kind, opts) {
         }
     }
 
-    // ── 2. Contextual artist search ─────────────────────────────────────────
-    // Source URLs are already a stronger identity signal, so this is deliberately
-    // limited to name-only credits (Apple / Deezer / most Qobuz / Titles).
-    if (kind === 'artist' && !parsed && releaseMbid) {
-        try {
-            const contextual = await findContextArtistMatches(searchName, releaseMbid);
-            if (contextual.matches.length === 1) {
-                const hit = contextual.matches[0];
-                const mbUrl = `//musicbrainz.org/artist/${hit.id}`;
-                if (key) {
-                    await writeIdbRecord(key, {
-                        mbid: hit.id,
-                        entityType: 'artist',
-                        name: hit.name,
-                        disambiguation: hit.disambiguation || '',
-                        resolvedVia: 'context',
-                    });
-                }
-                logDebug(`context: "${searchName}" resolved in circle ${contextual.circle} -> ${hit.id}`);
-                return buildResolved(
-                    mbUrl, hit.name, hit.disambiguation || '',
-                    'context', 'artist', false, undefined
-                );
-            }
-            if (contextual.matches.length > 1) {
-                logDebug(`context: "${searchName}" ambiguous in circle ${contextual.circle} (${contextual.matches.length} matches)`);
-                return buildAttention(
-                    contextual.matches,
-                    false,
-                    `context circle ${contextual.circle}: ${contextual.matches.length} exact matches`,
-                    undefined,
-                );
-            }
-        } catch (e) {
-            // Context is an optimisation / confidence layer, never a hard
-            // dependency. A failed context lookup falls through to the existing
-            // global search rather than turning a resolvable credit into an error.
-            logDebug(`context: "${searchName}" lookup failed (${e?.message || e}) - falling back to global search`);
-        }
-    }
+    // ── 2 + 3. Context + global name + URL relation ───────────────────────
+    // Context is useful even when the source provides an artist URL: the URL may
+    // not be linked in MB yet, while context can still identify the artist. Run
+    // all available evidence paths, then reconcile them below instead of letting
+    // one strategy short-circuit the others.
+    const contextPromise = kind === 'artist' && releaseMbid
+        ? findContextArtistMatches(searchName, releaseMbid)
+            .catch(e => {
+                logDebug(`context: "${searchName}" lookup failed (${e?.message || e}) - continuing without context`);
+                return null;
+            })
+        : Promise.resolve(null);
 
-    // ── 3 + 4. Global name search AND URL relation, in parallel ─────────────
     // The URL lookup uses `fetchJson404`: a 404 means "this URL isn't in MB"
     // (a real answer → no relations), while `null` means the lookup FAILED
     // (timeout / 429 storm). Conflating the two was the chip bug — a failed
-    // lookup got recorded (and IDB-persisted!) as "no relations", so the
-    // review table showed the 🔗 add-link button for already-linked URLs
-    // until the focus-return recheck corrected it.
-    const [nameJson, urlJson] = await Promise.all([
+    // lookup got recorded (and IDB-persisted!) as "no relations".
+    const [contextual, nameJson, urlJson] = await Promise.all([
+        contextPromise,
         mbThrottle.fetchJson(
             `//musicbrainz.org/ws/2/${kind}?query=${encodeURIComponent(searchName)}&fmt=json&limit=${searchLimit}`
         ),
@@ -454,6 +421,30 @@ async function resolveEntity(entity, kind, opts) {
         name:           exactNameMatches[0].name,
         disambiguation: exactNameMatches[0].disambiguation || '',
     } : null;
+
+    const contextMatches = contextual?.matches || [];
+    const contextHit = contextMatches.length === 1 ? {
+        kind:           'artist',
+        mbid:           contextMatches[0].id,
+        name:           contextMatches[0].name,
+        disambiguation: contextMatches[0].disambiguation || '',
+    } : null;
+    const contextAmbiguous = contextMatches.length > 1;
+
+    function sameTarget(left, right) {
+        return !!left && !!right && left.mbid === right.mbid && left.kind === right.kind;
+    }
+
+    function mergedReviewMatches(...groups) {
+        const byId = new Map();
+        for (const group of groups) {
+            for (const candidate of (group || [])) {
+                if (!candidate?.id || byId.has(candidate.id)) continue;
+                byId.set(candidate.id, candidate);
+            }
+        }
+        return [...byId.values()];
+    }
 
     // URL relation — extract the first matching rel (kind-specific; places
     // also accept label rels because MB editors often file a facility as a
@@ -504,21 +495,68 @@ async function resolveEntity(entity, kind, opts) {
         }
     }
 
-    // ── 4. Decide ───────────────────────────────────────────────────────────
+    // ── 4. Reconcile evidence ─────────────────────────────────────────────
     let resolved = null;
     let via      = null;
-    if (nameHit && urlHit) {
-        if (nameHit.mbid === urlHit.mbid && nameHit.kind === urlHit.kind) {
-            // Both lookups returned the same MBID — highest confidence.
-            // Prefer the URL hit's `kind` (it's authoritative for the
-            // place-resolved-as-label case).
+
+    // URL is the strongest identity signal, but context is still evaluated for
+    // URL-backed credits. Agreement is safe; disagreement is surfaced instead
+    // of silently choosing one side.
+    if (urlHit && contextHit) {
+        if (sameTarget(urlHit, contextHit)) {
             resolved = urlHit;
-            via      = 'both';
+            via = 'url';
         } else {
-            // Disagreement — needs user review. The old code silently picked
-            // whichever came first (always name, because the URL lookup was
-            // a fall-through); this is the latent bug that issue #32
-            // proposal E fixes.
+            const matches = mergedReviewMatches(contextMatches, nameMatches);
+            await cacheAttention(matches);
+            return buildAttention(
+                matches, false,
+                `context circle ${contextual.circle} → artist/${contextHit.mbid}, URL → ${urlHit.kind}/${urlHit.mbid}`,
+                urlLinkedIds,
+            );
+        }
+    } else if (urlHit && contextAmbiguous) {
+        const urlIsContextCandidate = urlHit.kind === 'artist' &&
+            contextMatches.some(candidate => candidate.id === urlHit.mbid);
+        if (urlIsContextCandidate) {
+            // The provider URL cleanly disambiguates several exact contextual
+            // candidates, so keep the authoritative URL target.
+            resolved = urlHit;
+            via = 'url';
+        } else {
+            const matches = mergedReviewMatches(contextMatches, nameMatches);
+            await cacheAttention(matches);
+            return buildAttention(
+                matches, false,
+                `context circle ${contextual.circle}: ${contextMatches.length} exact matches; URL → ${urlHit.kind}/${urlHit.mbid}`,
+                urlLinkedIds,
+            );
+        }
+    } else if (contextHit) {
+        if (nameHit && !sameTarget(contextHit, nameHit)) {
+            const matches = mergedReviewMatches(contextMatches, nameMatches);
+            await cacheAttention(matches);
+            return buildAttention(
+                matches, false,
+                `context circle ${contextual.circle} → artist/${contextHit.mbid}, name → ${nameHit.kind}/${nameHit.mbid}`,
+                urlLinkedIds,
+            );
+        }
+        resolved = contextHit;
+        via = 'context';
+    } else if (contextAmbiguous) {
+        const matches = mergedReviewMatches(contextMatches, nameMatches);
+        await cacheAttention(matches);
+        return buildAttention(
+            matches, false,
+            `context circle ${contextual.circle}: ${contextMatches.length} exact matches`,
+            urlLinkedIds,
+        );
+    } else if (nameHit && urlHit) {
+        if (sameTarget(nameHit, urlHit)) {
+            resolved = urlHit;
+            via = 'both';
+        } else {
             await cacheAttention(nameMatches);
             return buildAttention(
                 nameMatches, false,
@@ -528,10 +566,10 @@ async function resolveEntity(entity, kind, opts) {
         }
     } else if (urlHit) {
         resolved = urlHit;
-        via      = 'url';
+        via = 'url';
     } else if (nameHit) {
         resolved = nameHit;
-        via      = 'name';
+        via = 'name';
     }
 
     if (resolved) {
@@ -573,7 +611,7 @@ async function resolveEntity(entity, kind, opts) {
  *   - `opts.progressLi`: DOM element to update with "M/N done — checking …".
  *   - `opts.progressLabel`: leading text for the progress line.
  *   - `opts.bypassIdb`: pass through to `resolveEntity`.
- *   - `opts.releaseMbid`: enables contextual artist resolution for name-only credits.
+ *   - `opts.releaseMbid`: enables contextual artist resolution for artist credits.
  *
  * Returns `{ allResults: [...] }` with skipped entities filtered out.
  */
