@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         String Theory
 // @namespace    https://github.com/majkinetor/musicbrainz-userscripts
-// @version      2026.9.24.212048
+// @version      2026.9.25.125100
 // @description  Unified bundle of 8 MusicBrainz userscripts (apollo_editor, art_station, credit_hoarder, fusion, group_therapy, isrc_scout, mammoth, platform_check). Built by userscripts/string_theory/build.mjs — do not hand-edit.
 // @author       majkinetor
 // @icon         data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCIgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0Ij4NCiAgPCEtLSBodWItYW5kLXNwb2tlICJuZXR3b3JrIiBnbHlwaCwgc2luZ2xlIHZpdmlkIHZpb2xldCBvbiB0cmFuc3BhcmVudCBzbyBpdCByZWFkcyBvbiBib3RoIGRhcmsgYW5kIGxpZ2h0IHBhZ2VzIC0tPg0KICA8ZyBmaWxsPSJub25lIiBzdHJva2U9IiM3YzVjZmYiIHN0cm9rZS13aWR0aD0iNC42IiBzdHJva2UtbGluZWNhcD0icm91bmQiPg0KICAgIDxwYXRoIGQ9Ik0zMiAzMiBMMzIgMTUiLz4NCiAgICA8cGF0aCBkPSJNMzIgMzIgTDQ2LjUgMjMuNSIvPg0KICAgIDxwYXRoIGQ9Ik0zMiAzMiBMNDYuNSA0MC41Ii8+DQogICAgPHBhdGggZD0iTTMyIDMyIEwzMiA0OSIvPg0KICAgIDxwYXRoIGQ9Ik0zMiAzMiBMMTcuNSA0MC41Ii8+DQogICAgPHBhdGggZD0iTTMyIDMyIEwxNy41IDIzLjUiLz4NCiAgPC9nPg0KICA8ZyBmaWxsPSIjN2M1Y2ZmIj4NCiAgICA8Y2lyY2xlIGN4PSIzMiIgY3k9IjMyIiByPSI4LjYiLz4NCiAgICA8Y2lyY2xlIGN4PSIxNSIgY3k9IjE5LjUiIHI9IjYuNCIvPg0KICAgIDxjaXJjbGUgY3g9IjQ5IiBjeT0iMTkuNSIgcj0iNi40Ii8+DQogICAgPGNpcmNsZSBjeD0iMzIiIGN5PSI1NyIgcj0iNi40Ii8+DQogIDwvZz4NCiAgPGcgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjN2M1Y2ZmIiBzdHJva2Utd2lkdGg9IjMuOCI+DQogICAgPGNpcmNsZSBjeD0iMzIiIGN5PSI3IiByPSI0LjkiLz4NCiAgICA8Y2lyY2xlIGN4PSIxNSIgY3k9IjQ0LjUiIHI9IjQuOSIvPg0KICAgIDxjaXJjbGUgY3g9IjQ5IiBjeT0iNDQuNSIgcj0iNC45Ii8+DQogIDwvZz4NCjwvc3ZnPg0K
@@ -82,8 +82,8 @@
 // Bundles (verbatim, each wrapped in a run-at gate): apollo_editor, art_station, credit_hoarder, fusion, group_therapy, isrc_scout, mammoth, platform_check.
 
 try {
-  console.log('%c String Theory %c v2026.9.24.212048 ', 'background:#7c5cff;color:#fff;font-weight:bold;border-radius:3px;padding:2px 6px', 'color:#7c5cff;font-weight:bold');
-  console.log("String Theory bundles:\n  · Apollo Editor v2026.9.23\n  · Art Station v2026.9.23\n  · Credit Hoarder v2026.9.24.154248\n  · Fusion v2026.9.24\n  · Group Therapy v2026.9.22.222153\n  · ISRC Scout v2026.9.24\n  · Mammoth v2026.9.12\n  · Platform Check v2026.9.24");
+  console.log('%c String Theory %c v2026.9.25.125100 ', 'background:#7c5cff;color:#fff;font-weight:bold;border-radius:3px;padding:2px 6px', 'color:#7c5cff;font-weight:bold');
+  console.log("String Theory bundles:\n  · Apollo Editor v2026.9.23\n  · Art Station v2026.9.23\n  · Credit Hoarder v2026.9.25.124500\n  · Fusion v2026.9.24\n  · Group Therapy v2026.9.22.222153\n  · ISRC Scout v2026.9.24\n  · Mammoth v2026.9.12\n  · Platform Check v2026.9.24");
 } catch (e) {}
 
 // ===== apollo_editor (@run-at document-start) =====================================
@@ -14314,7 +14314,7 @@ try {
 
 // ===== credit_hoarder (@run-at document-end) ====================================
 (function(__stGM){
-  var GM_info = __stGM ? Object.assign({}, __stGM, { script: Object.assign({}, __stGM.script || {}, {"name":"Credit Hoarder*","namespace":"majkinetor","version":"2026.9.24.154248","description":"Import per-track release credits from streaming/database providers (Discogs, Tidal, Qobuz, Deezer) into MusicBrainz relationships, with a review phase","author":"majkinetor","homepage":null,"homepageURL":"https://github.com/majkinetor/musicbrainz-userscripts/blob/main/userscripts/credit_hoarder/README.md","supportURL":"https://github.com/majkinetor/musicbrainz-userscripts/issues","icon":"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij4KICANCiAgPGcgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMmY2ZjU0IiBzdHJva2Utd2lkdGg9IjkiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCI+DQogICAgPGNpcmNsZSBjeD0iMzQiIGN5PSIzOCIgcj0iMi41IiBmaWxsPSIjMmY2ZjU0IiBzdHJva2U9Im5vbmUiLz4NCiAgICA8bGluZSB4MT0iNTAiIHkxPSIzOCIgeDI9Ijk4IiB5Mj0iMzgiLz4NCiAgICA8Y2lyY2xlIGN4PSIzNCIgY3k9IjY0IiByPSIyLjUiIGZpbGw9IiMyZjZmNTQiIHN0cm9rZT0ibm9uZSIvPg0KICAgIDxsaW5lIHgxPSI1MCIgeTE9IjY0IiB4Mj0iOTgiIHkyPSI2NCIvPg0KICAgIDxjaXJjbGUgY3g9IjM0IiBjeT0iOTAiIHI9IjIuNSIgZmlsbD0iIzJmNmY1NCIgc3Ryb2tlPSJub25lIi8+DQogICAgPGxpbmUgeDE9IjUwIiB5MT0iOTAiIHgyPSI3NCIgeTI9IjkwIi8+DQogIDwvZz4NCiAgPGNpcmNsZSBjeD0iOTIiIGN5PSI5MiIgcj0iMjMiIGZpbGw9IiMyZTllNWIiLz4NCiAgPGcgc3Ryb2tlPSIjZmZmIiBzdHJva2Utd2lkdGg9IjciIHN0cm9rZS1saW5lY2FwPSJyb3VuZCI+DQogICAgPGxpbmUgeDE9IjkyIiB5MT0iODEiIHgyPSI5MiIgeTI9IjEwMyIvPg0KICAgIDxsaW5lIHgxPSI4MSIgeTE9IjkyIiB4Mj0iMTAzIiB5Mj0iOTIiLz4NCiAgPC9nPg0KPC9zdmc+DQo="}) }) : { script: {"name":"Credit Hoarder*","namespace":"majkinetor","version":"2026.9.24.154248","description":"Import per-track release credits from streaming/database providers (Discogs, Tidal, Qobuz, Deezer) into MusicBrainz relationships, with a review phase","author":"majkinetor","homepage":null,"homepageURL":"https://github.com/majkinetor/musicbrainz-userscripts/blob/main/userscripts/credit_hoarder/README.md","supportURL":"https://github.com/majkinetor/musicbrainz-userscripts/issues","icon":"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij4KICANCiAgPGcgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMmY2ZjU0IiBzdHJva2Utd2lkdGg9IjkiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCI+DQogICAgPGNpcmNsZSBjeD0iMzQiIGN5PSIzOCIgcj0iMi41IiBmaWxsPSIjMmY2ZjU0IiBzdHJva2U9Im5vbmUiLz4NCiAgICA8bGluZSB4MT0iNTAiIHkxPSIzOCIgeDI9Ijk4IiB5Mj0iMzgiLz4NCiAgICA8Y2lyY2xlIGN4PSIzNCIgY3k9IjY0IiByPSIyLjUiIGZpbGw9IiMyZjZmNTQiIHN0cm9rZT0ibm9uZSIvPg0KICAgIDxsaW5lIHgxPSI1MCIgeTE9IjY0IiB4Mj0iOTgiIHkyPSI2NCIvPg0KICAgIDxjaXJjbGUgY3g9IjM0IiBjeT0iOTAiIHI9IjIuNSIgZmlsbD0iIzJmNmY1NCIgc3Ryb2tlPSJub25lIi8+DQogICAgPGxpbmUgeDE9IjUwIiB5MT0iOTAiIHgyPSI3NCIgeTI9IjkwIi8+DQogIDwvZz4NCiAgPGNpcmNsZSBjeD0iOTIiIGN5PSI5MiIgcj0iMjMiIGZpbGw9IiMyZTllNWIiLz4NCiAgPGcgc3Ryb2tlPSIjZmZmIiBzdHJva2Utd2lkdGg9IjciIHN0cm9rZS1saW5lY2FwPSJyb3VuZCI+DQogICAgPGxpbmUgeDE9IjkyIiB5MT0iODEiIHgyPSI5MiIgeTI9IjEwMyIvPg0KICAgIDxsaW5lIHgxPSI4MSIgeTE9IjkyIiB4Mj0iMTAzIiB5Mj0iOTIiLz4NCiAgPC9nPg0KPC9zdmc+DQo="} };
+  var GM_info = __stGM ? Object.assign({}, __stGM, { script: Object.assign({}, __stGM.script || {}, {"name":"Credit Hoarder*","namespace":"majkinetor","version":"2026.9.25.124500","description":"Import per-track release credits from streaming/database providers (Discogs, Tidal, Qobuz, Deezer) into MusicBrainz relationships, with a review phase","author":"majkinetor","homepage":null,"homepageURL":"https://github.com/majkinetor/musicbrainz-userscripts/blob/main/userscripts/credit_hoarder/README.md","supportURL":"https://github.com/majkinetor/musicbrainz-userscripts/issues","icon":"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij4KICANCiAgPGcgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMmY2ZjU0IiBzdHJva2Utd2lkdGg9IjkiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCI+DQogICAgPGNpcmNsZSBjeD0iMzQiIGN5PSIzOCIgcj0iMi41IiBmaWxsPSIjMmY2ZjU0IiBzdHJva2U9Im5vbmUiLz4NCiAgICA8bGluZSB4MT0iNTAiIHkxPSIzOCIgeDI9Ijk4IiB5Mj0iMzgiLz4NCiAgICA8Y2lyY2xlIGN4PSIzNCIgY3k9IjY0IiByPSIyLjUiIGZpbGw9IiMyZjZmNTQiIHN0cm9rZT0ibm9uZSIvPg0KICAgIDxsaW5lIHgxPSI1MCIgeTE9IjY0IiB4Mj0iOTgiIHkyPSI2NCIvPg0KICAgIDxjaXJjbGUgY3g9IjM0IiBjeT0iOTAiIHI9IjIuNSIgZmlsbD0iIzJmNmY1NCIgc3Ryb2tlPSJub25lIi8+DQogICAgPGxpbmUgeDE9IjUwIiB5MT0iOTAiIHgyPSI3NCIgeTI9IjkwIi8+DQogIDwvZz4NCiAgPGNpcmNsZSBjeD0iOTIiIGN5PSI5MiIgcj0iMjMiIGZpbGw9IiMyZTllNWIiLz4NCiAgPGcgc3Ryb2tlPSIjZmZmIiBzdHJva2Utd2lkdGg9IjciIHN0cm9rZS1saW5lY2FwPSJyb3VuZCI+DQogICAgPGxpbmUgeDE9IjkyIiB5MT0iODEiIHgyPSI5MiIgeTI9IjEwMyIvPg0KICAgIDxsaW5lIHgxPSI4MSIgeTE9IjkyIiB4Mj0iMTAzIiB5Mj0iOTIiLz4NCiAgPC9nPg0KPC9zdmc+DQo="}) }) : { script: {"name":"Credit Hoarder*","namespace":"majkinetor","version":"2026.9.25.124500","description":"Import per-track release credits from streaming/database providers (Discogs, Tidal, Qobuz, Deezer) into MusicBrainz relationships, with a review phase","author":"majkinetor","homepage":null,"homepageURL":"https://github.com/majkinetor/musicbrainz-userscripts/blob/main/userscripts/credit_hoarder/README.md","supportURL":"https://github.com/majkinetor/musicbrainz-userscripts/issues","icon":"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij4KICANCiAgPGcgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMmY2ZjU0IiBzdHJva2Utd2lkdGg9IjkiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCI+DQogICAgPGNpcmNsZSBjeD0iMzQiIGN5PSIzOCIgcj0iMi41IiBmaWxsPSIjMmY2ZjU0IiBzdHJva2U9Im5vbmUiLz4NCiAgICA8bGluZSB4MT0iNTAiIHkxPSIzOCIgeDI9Ijk4IiB5Mj0iMzgiLz4NCiAgICA8Y2lyY2xlIGN4PSIzNCIgY3k9IjY0IiByPSIyLjUiIGZpbGw9IiMyZjZmNTQiIHN0cm9rZT0ibm9uZSIvPg0KICAgIDxsaW5lIHgxPSI1MCIgeTE9IjY0IiB4Mj0iOTgiIHkyPSI2NCIvPg0KICAgIDxjaXJjbGUgY3g9IjM0IiBjeT0iOTAiIHI9IjIuNSIgZmlsbD0iIzJmNmY1NCIgc3Ryb2tlPSJub25lIi8+DQogICAgPGxpbmUgeDE9IjUwIiB5MT0iOTAiIHgyPSI3NCIgeTI9IjkwIi8+DQogIDwvZz4NCiAgPGNpcmNsZSBjeD0iOTIiIGN5PSI5MiIgcj0iMjMiIGZpbGw9IiMyZTllNWIiLz4NCiAgPGcgc3Ryb2tlPSIjZmZmIiBzdHJva2Utd2lkdGg9IjciIHN0cm9rZS1saW5lY2FwPSJyb3VuZCI+DQogICAgPGxpbmUgeDE9IjkyIiB5MT0iODEiIHgyPSI5MiIgeTI9IjEwMyIvPg0KICAgIDxsaW5lIHgxPSI4MSIgeTE9IjkyIiB4Mj0iMTAzIiB5Mj0iOTIiLz4NCiAgPC9nPg0KPC9zdmc+DQo="} };
   (f=>document.readyState!=='loading'?f():document.addEventListener('DOMContentLoaded',f,{once:true}))(function(){
 (() => {
   // src/constants.js
@@ -17492,8 +17492,104 @@ try {
     // since the original company resolver).
     place: { searchLimit: 8, resultKey: "places", incRels: "place-rels+label-rels" }
   };
+  var _releaseArtistContextPromises = /* @__PURE__ */ new Map();
+  var _artistContextDetailPromises = /* @__PURE__ */ new Map();
+  function normalizeArtistName(value) {
+    return String(value || "").trim().toLowerCase();
+  }
+  function sameArtistName(left, right) {
+    return normalizeArtistName(left) === normalizeArtistName(right);
+  }
+  function artistCanonicalNameMatches(name, artist) {
+    return [artist?.name, artist?.["sort-name"], artist?.sortName].filter(Boolean).some((value) => sameArtistName(name, value));
+  }
+  function artistAliasMatches(name, artist) {
+    return (artist?.aliases || []).some((alias) => sameArtistName(name, typeof alias === "string" ? alias : alias?.name));
+  }
+  function collectReleaseCreditedArtists(release) {
+    const artists = /* @__PURE__ */ new Map();
+    function addCredit(credit, scope) {
+      for (const entry of credit || []) {
+        const artist = entry?.artist;
+        if (!artist?.id) continue;
+        let item = artists.get(artist.id);
+        if (!item) {
+          item = { ...artist, creditedNames: /* @__PURE__ */ new Set(), scopes: /* @__PURE__ */ new Set() };
+          artists.set(artist.id, item);
+        }
+        if (entry?.name) item.creditedNames.add(String(entry.name));
+        if (artist.name) item.creditedNames.add(String(artist.name));
+        item.scopes.add(scope);
+      }
+    }
+    addCredit(release?.["artist-credit"], "release");
+    for (const medium of release?.media || []) {
+      for (const track of medium?.tracks || []) {
+        addCredit(track?.["artist-credit"], "track");
+        addCredit(track?.recording?.["artist-credit"], "recording");
+      }
+    }
+    return [...artists.values()];
+  }
+  async function getArtistContextDetails(mbid) {
+    if (!_artistContextDetailPromises.has(mbid)) {
+      _artistContextDetailPromises.set(mbid, mbThrottle.fetchJson(`//musicbrainz.org/ws/2/artist/${mbid}?inc=aliases+artist-rels&fmt=json`));
+    }
+    return _artistContextDetailPromises.get(mbid);
+  }
+  async function getReleaseArtistContext(releaseMbid) {
+    if (!releaseMbid) return null;
+    if (!_releaseArtistContextPromises.has(releaseMbid)) {
+      _releaseArtistContextPromises.set(releaseMbid, (async () => {
+        const release = await mbThrottle.fetchJson(`//musicbrainz.org/ws/2/release/${releaseMbid}?inc=artist-credits+recordings&fmt=json`);
+        if (!release) return null;
+        return { releaseMbid, directArtists: collectReleaseCreditedArtists(release) };
+      })());
+    }
+    return _releaseArtistContextPromises.get(releaseMbid);
+  }
+  function contextCandidate(artist) {
+    return { id: artist.id, name: artist.name || "", disambiguation: artist.disambiguation || artist["disambiguation-comment"] || "", score: 100 };
+  }
+  function dedupeContextCandidates(candidates) {
+    return [...new Map(candidates.filter((candidate) => candidate?.id).map((candidate) => [candidate.id, candidate])).values()];
+  }
+  async function findContextArtistMatches(searchName, releaseMbid) {
+    const context = await getReleaseArtistContext(releaseMbid);
+    if (!context?.directArtists?.length) return { circle: 0, matches: [] };
+    const circle1 = dedupeContextCandidates(context.directArtists.filter((artist) =>
+      artistCanonicalNameMatches(searchName, artist) || [...artist.creditedNames || []].some((name) => sameArtistName(searchName, name))
+    ).map(contextCandidate));
+    if (circle1.length) return { circle: 1, matches: circle1 };
+    const directDetails = (await Promise.all(context.directArtists.map((artist) => getArtistContextDetails(artist.id)))).filter(Boolean);
+    const circle2 = dedupeContextCandidates(directDetails.filter((artist) => artistAliasMatches(searchName, artist)).map(contextCandidate));
+    if (circle2.length) return { circle: 2, matches: circle2 };
+    const relatedContexts = [];
+    for (const root of directDetails) {
+      for (const relation of root.relations || []) {
+        const related = relation?.artist;
+        if (!related?.id) continue;
+        relatedContexts.push({ root, relation, related });
+      }
+    }
+    const circle3 = dedupeContextCandidates(relatedContexts.filter(({ relation, related }) => {
+      const relationshipCredits = [relation?.["source-credit"], relation?.["target-credit"]].filter(Boolean);
+      return artistCanonicalNameMatches(searchName, related) || relationshipCredits.some((value) => sameArtistName(searchName, value));
+    }).map(({ related }) => contextCandidate(related)));
+    if (circle3.length) return { circle: 3, matches: circle3 };
+    const relatedIds = new Set(relatedContexts.map(({ related }) => related.id));
+    if (relatedIds.size) {
+      const escaped = String(searchName || "").replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+      const aliasJson = await mbThrottle.fetchJson(`//musicbrainz.org/ws/2/artist?query=${encodeURIComponent(`alias:"${escaped}"`)}&fmt=json&limit=25`);
+      const relatedHits = (aliasJson?.artists || []).filter((artist) => relatedIds.has(artist.id));
+      const verified = (await Promise.all(relatedHits.map((artist) => getArtistContextDetails(artist.id)))).filter((artist) => artist && artistAliasMatches(searchName, artist));
+      const circle4 = dedupeContextCandidates(verified.map(contextCandidate));
+      if (circle4.length) return { circle: 4, matches: circle4 };
+    }
+    return { circle: 0, matches: [] };
+  }
   async function resolveEntity(entity, kind, opts) {
-    const { bypassIdb } = opts;
+    const { bypassIdb, releaseMbid } = opts;
     const { searchLimit, resultKey, incRels } = KIND_TABLE[kind];
     const parsed = parseSourceEntityUrl(entity.resource_url);
     const key = parsed?.key || entity._cacheKey || null;
@@ -17609,6 +17705,25 @@ try {
         return buildAttention(cachedRec.nameMatches, false, null, attnLinkedIds, cachedRec.creditOverride);
       }
     }
+    if (kind === "artist" && !parsed && releaseMbid) {
+      try {
+        const contextual = await findContextArtistMatches(searchName, releaseMbid);
+        if (contextual.matches.length === 1) {
+          const hit = contextual.matches[0];
+          const mbUrl = `//musicbrainz.org/artist/${hit.id}`;
+          const contextVia = `context-c${contextual.circle}`;
+          if (key) await writeIdbRecord(key, { mbid: hit.id, entityType: "artist", name: hit.name, disambiguation: hit.disambiguation || "", resolvedVia: contextVia });
+          logDebug(`context: "${searchName}" resolved in circle ${contextual.circle} -> ${hit.id}`);
+          return buildResolved(mbUrl, hit.name, hit.disambiguation || "", contextVia, "artist", false, void 0);
+        }
+        if (contextual.matches.length > 1) {
+          logDebug(`context: "${searchName}" ambiguous in circle ${contextual.circle} (${contextual.matches.length} matches)`);
+          return buildAttention(contextual.matches, false, `context circle ${contextual.circle}: ${contextual.matches.length} exact matches`, void 0);
+        }
+      } catch (e) {
+        logDebug(`context: "${searchName}" lookup failed (${e?.message || e}) - falling back to global search`);
+      }
+    }
     const [nameJson, urlJson] = await Promise.all([
       mbThrottle.fetchJson(
         `//musicbrainz.org/ws/2/${kind}?query=${encodeURIComponent(searchName)}&fmt=json&limit=${searchLimit}`
@@ -17710,7 +17825,7 @@ try {
     return buildAttention(nameMatches, nameSearchFailed, null, urlLinkedIds);
   }
   async function resolveAll(entities, opts) {
-    const { kindOf, progressLi, bypassIdb, progressLabel } = opts;
+    const { kindOf, progressLi, bypassIdb, progressLabel, releaseMbid } = opts;
     const CONCURRENCY = 5;
     const MIN_GAP_MS = 50;
     let done = 0;
@@ -17755,7 +17870,7 @@ try {
         setProgress();
         const t0 = Date.now();
         logDebug(`${tag} resolving "${displayName}" (${kind})`);
-        results[index] = await resolveEntity(entity, kind, { bypassIdb });
+        results[index] = await resolveEntity(entity, kind, { bypassIdb, releaseMbid });
         const elapsed = Date.now() - t0;
         const r = results[index];
         const outcome = r?.type === "resolved" ? `resolved via ${r.logEntry?.via || "?"}${r.logEntry?.fromCache ? " (cache)" : ""}` : r?.type === "attention" ? `unresolved (${r.nameMatches?.length || 0} candidates)` : "skipped";
@@ -18170,6 +18285,10 @@ ${ourBlock}` : ourBlock;
         // high confidence
         url: { text: "url", color: "var(--mbu-accent-text)" },
         name: { text: "name", color: "var(--mbu-accent-text)" },
+        "context-c1": { text: "C1", color: "var(--mbu-ok)", title: "Contextual search C1: direct credited artist" },
+        "context-c2": { text: "C2", color: "var(--mbu-accent-text)", title: "Contextual search C2: alias of a direct credited artist" },
+        "context-c3": { text: "C3", color: "var(--mbu-warn)", title: "Contextual search C3: artist related to a direct credited artist" },
+        "context-c4": { text: "C4", color: "var(--mbu-text-dim)", title: "Contextual search C4: alias of a related artist" },
         user: { text: "user", color: "var(--mbu-text-dim)" },
         cache: { text: "cache", color: "var(--mbu-text-dim)" }
         // legacy: original mechanism unknown
@@ -18178,7 +18297,11 @@ ${ourBlock}` : ourBlock;
         const base = VIA_STYLES[via];
         if (!base) return null;
         if (fromCache && via !== "cache") {
-          return { text: `${base.text} (cache)`, color: base.color };
+          return {
+            ...base,
+            text: `${base.text} (cache)`,
+            title: `${base.title || `Resolved via ${via}`}, served from cache`
+          };
         }
         return base;
       }
@@ -18187,7 +18310,7 @@ ${ourBlock}` : ourBlock;
         if (!cfg) return null;
         const span = document.createElement("span");
         span.textContent = cfg.text;
-        span.title = fromCache && via !== "cache" ? `Resolved via ${via}, served from cache` : `Resolved via ${via}`;
+        span.title = cfg.title || `Resolved via ${via}`;
         span.style.cssText = `font-size:0.68rem;background:var(--mbu-bg-raised);color:${cfg.color};padding:0 0.35rem;border-radius:8px;border:1px solid var(--mbu-border);flex-shrink:0;`;
         return span;
       }
@@ -22767,7 +22890,8 @@ ${lines}
           progressLi: artistProgressLi,
           progressLabel: "Checking artists against MusicBrainz",
           kindOf: ENTITY_KIND,
-          bypassIdb
+          bypassIdb,
+          releaseMbid: _relMbid
         });
         const companyResults = await resolveAll(uniqueCompanies, {
           progressLi: companyProgressLi,
