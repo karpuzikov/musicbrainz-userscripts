@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Credit Hoarder
 // @namespace    majkinetor
-// @version      2026.9.25.124700
+// @version      2026.9.25.125000
 // @description  Import per-track release credits from streaming/database providers (Discogs, Tidal, Qobuz, Deezer) into MusicBrainz relationships, with a review phase
 // @author       majkinetor
 // @icon         data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij4KICANCiAgPGcgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMmY2ZjU0IiBzdHJva2Utd2lkdGg9IjkiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCI+DQogICAgPGNpcmNsZSBjeD0iMzQiIGN5PSIzOCIgcj0iMi41IiBmaWxsPSIjMmY2ZjU0IiBzdHJva2U9Im5vbmUiLz4NCiAgICA8bGluZSB4MT0iNTAiIHkxPSIzOCIgeDI9Ijk4IiB5Mj0iMzgiLz4NCiAgICA8Y2lyY2xlIGN4PSIzNCIgY3k9IjY0IiByPSIyLjUiIGZpbGw9IiMyZjZmNTQiIHN0cm9rZT0ibm9uZSIvPg0KICAgIDxsaW5lIHgxPSI1MCIgeTE9IjY0IiB4Mj0iOTgiIHkyPSI2NCIvPg0KICAgIDxjaXJjbGUgY3g9IjM0IiBjeT0iOTAiIHI9IjIuNSIgZmlsbD0iIzJmNmY1NCIgc3Ryb2tlPSJub25lIi8+DQogICAgPGxpbmUgeDE9IjUwIiB5MT0iOTAiIHgyPSI3NCIgeTI9IjkwIi8+DQogIDwvZz4NCiAgPGNpcmNsZSBjeD0iOTIiIGN5PSI5MiIgcj0iMjMiIGZpbGw9IiMyZTllNWIiLz4NCiAgPGcgc3Ryb2tlPSIjZmZmIiBzdHJva2Utd2lkdGg9IjciIHN0cm9rZS1saW5lY2FwPSJyb3VuZCI+DQogICAgPGxpbmUgeDE9IjkyIiB5MT0iODEiIHgyPSI5MiIgeTI9IjEwMyIvPg0KICAgIDxsaW5lIHgxPSI4MSIgeTE9IjkyIiB4Mj0iMTAzIiB5Mj0iOTIiLz4NCiAgPC9nPg0KPC9zdmc+DQo=
@@ -3421,25 +3421,12 @@
         return buildAttention(cachedRec.nameMatches, false, null, attnLinkedIds, cachedRec.creditOverride);
       }
     }
-    if (kind === "artist" && !parsed && releaseMbid) {
-      try {
-        const contextual = await findContextArtistMatches(searchName, releaseMbid);
-        if (contextual.matches.length === 1) {
-          const hit = contextual.matches[0];
-          const mbUrl = `//musicbrainz.org/artist/${hit.id}`;
-          if (key) await writeIdbRecord(key, { mbid: hit.id, entityType: "artist", name: hit.name, disambiguation: hit.disambiguation || "", resolvedVia: "context" });
-          logDebug(`context: "${searchName}" resolved in circle ${contextual.circle} -> ${hit.id}`);
-          return buildResolved(mbUrl, hit.name, hit.disambiguation || "", "context", "artist", false, void 0);
-        }
-        if (contextual.matches.length > 1) {
-          logDebug(`context: "${searchName}" ambiguous in circle ${contextual.circle} (${contextual.matches.length} matches)`);
-          return buildAttention(contextual.matches, false, `context circle ${contextual.circle}: ${contextual.matches.length} exact matches`, void 0);
-        }
-      } catch (e) {
-        logDebug(`context: "${searchName}" lookup failed (${e?.message || e}) - falling back to global search`);
-      }
-    }
-    const [nameJson, urlJson] = await Promise.all([
+    const contextPromise = kind === "artist" && releaseMbid ? findContextArtistMatches(searchName, releaseMbid).catch((e) => {
+      logDebug(`context: "${searchName}" lookup failed (${e?.message || e}) - continuing without context`);
+      return null;
+    }) : Promise.resolve(null);
+    const [contextual, nameJson, urlJson] = await Promise.all([
+      contextPromise,
       mbThrottle.fetchJson(
         `//musicbrainz.org/ws/2/${kind}?query=${encodeURIComponent(searchName)}&fmt=json&limit=${searchLimit}`
       ),
@@ -3462,6 +3449,27 @@
       name: exactNameMatches[0].name,
       disambiguation: exactNameMatches[0].disambiguation || ""
     } : null;
+    const contextMatches = contextual?.matches || [];
+    const contextHit = contextMatches.length === 1 ? {
+      kind: "artist",
+      mbid: contextMatches[0].id,
+      name: contextMatches[0].name,
+      disambiguation: contextMatches[0].disambiguation || ""
+    } : null;
+    const contextAmbiguous = contextMatches.length > 1;
+    function sameTarget(left, right) {
+      return !!left && !!right && left.mbid === right.mbid && left.kind === right.kind;
+    }
+    function mergedReviewMatches(...groups) {
+      const byId = /* @__PURE__ */ new Map();
+      for (const group of groups) {
+        for (const candidate of group || []) {
+          if (!candidate?.id || byId.has(candidate.id)) continue;
+          byId.set(candidate.id, candidate);
+        }
+      }
+      return [...byId.values()];
+    }
     let urlHit = null;
     const urlLinkedIds = urlJson === null ? void 0 : (urlJson.relations || []).map((r) => kind === "place" ? r.place?.id || r.label?.id || null : r[kind]?.id || null).filter(Boolean);
     if (urlJson?.relations?.length > 0) {
@@ -3494,8 +3502,59 @@
     }
     let resolved = null;
     let via = null;
-    if (nameHit && urlHit) {
-      if (nameHit.mbid === urlHit.mbid && nameHit.kind === urlHit.kind) {
+    if (urlHit && contextHit) {
+      if (sameTarget(urlHit, contextHit)) {
+        resolved = urlHit;
+        via = "url";
+      } else {
+        const matches = mergedReviewMatches(contextMatches, nameMatches);
+        await cacheAttention(matches);
+        return buildAttention(
+          matches,
+          false,
+          `context circle ${contextual.circle} → artist/${contextHit.mbid}, URL → ${urlHit.kind}/${urlHit.mbid}`,
+          urlLinkedIds
+        );
+      }
+    } else if (urlHit && contextAmbiguous) {
+      const urlIsContextCandidate = urlHit.kind === "artist" && contextMatches.some((candidate) => candidate.id === urlHit.mbid);
+      if (urlIsContextCandidate) {
+        resolved = urlHit;
+        via = "url";
+      } else {
+        const matches = mergedReviewMatches(contextMatches, nameMatches);
+        await cacheAttention(matches);
+        return buildAttention(
+          matches,
+          false,
+          `context circle ${contextual.circle}: ${contextMatches.length} exact matches; URL → ${urlHit.kind}/${urlHit.mbid}`,
+          urlLinkedIds
+        );
+      }
+    } else if (contextHit) {
+      if (nameHit && !sameTarget(contextHit, nameHit)) {
+        const matches = mergedReviewMatches(contextMatches, nameMatches);
+        await cacheAttention(matches);
+        return buildAttention(
+          matches,
+          false,
+          `context circle ${contextual.circle} → artist/${contextHit.mbid}, name → ${nameHit.kind}/${nameHit.mbid}`,
+          urlLinkedIds
+        );
+      }
+      resolved = contextHit;
+      via = "context";
+    } else if (contextAmbiguous) {
+      const matches = mergedReviewMatches(contextMatches, nameMatches);
+      await cacheAttention(matches);
+      return buildAttention(
+        matches,
+        false,
+        `context circle ${contextual.circle}: ${contextMatches.length} exact matches`,
+        urlLinkedIds
+      );
+    } else if (nameHit && urlHit) {
+      if (sameTarget(nameHit, urlHit)) {
         resolved = urlHit;
         via = "both";
       } else {
@@ -3503,7 +3562,7 @@
         return buildAttention(
           nameMatches,
           false,
-          `name \u2192 ${nameHit.kind}/${nameHit.mbid}, URL \u2192 ${urlHit.kind}/${urlHit.mbid}`,
+          `name → ${nameHit.kind}/${nameHit.mbid}, URL → ${urlHit.kind}/${urlHit.mbid}`,
           urlLinkedIds
         );
       }
