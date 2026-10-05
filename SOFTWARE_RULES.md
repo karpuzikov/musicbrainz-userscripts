@@ -8,6 +8,15 @@ This section is a meta-rule over **every rule in this file, every project-specif
 
 Unless a rule is explicitly labeled as optional/recommendation, it is a **release-blocking invariant**, not a suggestion.
 
+### GitHub-wide rule synchronization
+
+- The canonical global rule source is `karpuzikov/userscripts/SOFTWARE_RULES.md`.
+- Every software repository maintained under the `karpuzikov` GitHub account must contain an exact current mirror of this file at its repository root.
+- Whenever the canonical global rules change, synchronize the full file to every existing software repository before further software work is considered ready.
+- Any newly created or newly adopted software repository must receive the current global rule file before its first modification or release.
+- A stale, shortened, summarized, or selectively copied rule file is a compliance failure. Project-specific rules may add stricter requirements in separate rule files, but may not replace or weaken the complete global baseline.
+- Before software work begins in any repository, verify that its mirrored `SOFTWARE_RULES.md` matches the canonical file exactly.
+
 ### Mandatory preflight
 
 Before creating, modifying, building, publishing, or handing off any software:
