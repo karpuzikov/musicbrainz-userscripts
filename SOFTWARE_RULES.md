@@ -263,5 +263,27 @@ This is a blocking repository rule.
 
 ## GitHub development status
 
-- New or updated software must initially use `Under construction ⚠️` in the GitHub Version/status column.
-- Keep `Under construction ⚠️` until the user confirms testing is complete; then replace it with the actual version.
+- The GitHub Version/status column must always show the software's actual current version.
+- `Under construction ⚠️` is a status only. It must never replace, hide, or stand in for the version.
+- New or updated software must show the actual version together with the status, in the form `<version> - Under construction ⚠️`.
+- Keep `Under construction ⚠️` alongside the version until the user confirms testing is complete; then remove only the status and leave the version unchanged.
+
+
+## ComfyUI prompt optimizer standard - mandatory default
+
+This rule applies to all current and future ComfyUI workflows created or updated for the user when the workflow accepts a natural-language generation/edit prompt. Use this optimizer architecture by default unless the user explicitly asks to omit or replace it.
+
+- Use native ComfyUI `TextGenerate` as the prompt-rewrite engine. Do not require the old PromptEnhancer-MTP node pack when native `TextGenerate` is available.
+- Use a dedicated lightweight Qwen3-VL prompt-optimizer encoder: `qwen3vl_8b_int8_convrot.safetensors` from `models/text_encoders/`, loaded as `qwen_image`.
+- The prompt optimizer is separate from the model's actual conditioning encoder. Never replace or downgrade the generation model's required text/vision encoder just to run prompt optimization.
+- For image-conditioned workflows, feed the original source/reference image(s) into `TextGenerate` so the optimizer can anchor the rewritten prompt to visible content instead of guessing.
+- Provide a clearly named `PROMPT OPTIMIZER` boolean control, ON by default.
+- When the optimizer is OFF, pass the original user prompt through unchanged and, where ComfyUI lazy execution permits, avoid running the optimizer branch.
+- If prompt rewriting returns an empty/failed result, automatically fall back to the original prompt instead of failing the generation.
+- Pass relevant workflow state into the optimizer request when it changes prompt semantics, such as audio ON/OFF, generation mode, or reference-image roles.
+- Use a model/task-specific system prompt. The optimizer must output only the final model-ready prompt, without commentary, markdown fences, safety prose, or implementation details.
+- Preserve exact dialogue, lyrics, captions, signs, and other requested visible/audible text in their original language and wording.
+- Keep the user's intent and source identity/content stable. Clarify ambiguous motion/edit instructions, but do not invent unrelated subjects, objects, events, scene changes, or stylistic edits.
+- For MiniMax H3 Image-to-Video, the optimized prompt must use exactly these sections: `integrated_multimodal_description`, `overall_soundscape`, and `non_diegetic_music`. Motion should be chronological and physically plausible.
+- For MiniMax H3 workflows with audio disabled, the optimizer must set both `overall_soundscape` and `non_diegetic_music` to exactly `none`.
+- The existing Qwen Image 2.1 workflow architecture using `TextGenerate` + source image + ON/OFF switch + failure fallback is the canonical implementation pattern to reuse in future workflows.
