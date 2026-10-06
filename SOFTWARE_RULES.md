@@ -261,6 +261,15 @@ This is a blocking repository rule.
 - A normal userscript update, README update, rule update, or unrelated software update must not trigger GitHub Actions.
 - If a validation can be done during the current publish operation, do it directly instead of creating CI.
 
+## Versioned filenames for GitHub software downloads - mandatory
+
+- Every user-downloadable software build, executable, script, installer, or archive must have its **actual version in its physical filename**. GitHub's raw download basename and release asset filename must make the saved file's version immediately obvious.
+- Preserve each project's established naming convention. When the project has no stricter convention, use `<ProductName> v<MAJOR.MINOR.PATCH>.<extension>` (for example, `ArchiveMedia v6.0.12.bat`). Product names must remain intact; never substitute generic basenames like `ArchiveMedia.bat` for the distributed download.
+- The filename version must match the program's version and the version displayed in repository listings. `Under construction ⚠️` is a separate status and must never replace or hide the version.
+- For every version change, publish a newly versioned download filename and update all links, download badges, readmes, release assets, and documented run commands. Verify that download links point to a real file and that the browser/download filename contains the correct version.
+- Stable *internal* source filenames, package metadata and updater endpoints may remain unchanged when renaming would break integrations. In particular, preserve Tampermonkey `.user.js` identity and `@updateURL`/`@downloadURL` stability; use separately named versioned downloadable artifacts where applicable without interfering with native update behavior.
+- Apply this rule to every existing and future software project under `karpuzikov`; bring existing unversioned user-facing download files into compliance as each project is updated. Never present an unversioned file as the current downloadable build.
+
 ## GitHub development status
 
 - The GitHub Version/status column must always show the software's actual current version.
