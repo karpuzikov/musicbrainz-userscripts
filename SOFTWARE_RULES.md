@@ -23,9 +23,27 @@ Before creating, modifying, building, publishing, or handing off any software:
 
 1. Load/review the latest global rules in this file.
 2. Load/review the target project's own rules.
-3. Apply the newest explicit user instruction when it conflicts with an older rule.
-4. For any user-facing UI work, re-check the relevant current UXDT guideline pages before implementation.
-5. Identify all cross-cutting rules affected by the change, not only the feature explicitly requested.
+3. Load/review the target software's mandatory `CONTINUITY.md` handoff file.
+4. Apply the newest explicit user instruction when it conflicts with an older rule.
+5. For any user-facing UI work, re-check the relevant current UXDT guideline pages before implementation.
+6. Identify all cross-cutting rules affected by the change, not only the feature explicitly requested.
+
+### Mandatory per-software continuity file
+
+Every current and future GitHub software project maintained under the `karpuzikov` account must have an up-to-date `CONTINUITY.md` file that allows a new ChatGPT conversation or developer to continue the work without relying on chat memory.
+
+- For a repository containing one software product, keep `CONTINUITY.md` at the repository root.
+- For a monorepo containing multiple independent software products, keep one `CONTINUITY.md` in each software project's own root directory. A repository-level file may exist additionally, but it does not replace the per-product file.
+- Create the file before the first substantive code change for new software. For existing software that does not yet have one, creating/updating it is mandatory at the next modification before that modification is considered complete.
+- Update `CONTINUITY.md` in the same development checkpoint whenever versions, architecture, feature behavior, rules, dependencies, paths, build/release flow, known bugs, test status, failed approaches, current implementation state, or next steps change.
+- The file is an authoritative handoff document, not a changelog-only summary. It must contain enough concrete detail to resume implementation without reading the prior chat.
+- At minimum record: product purpose; current version and development status; canonical source paths; active branches; architecture; dependencies; persistent-data locations; complete important feature/behavior contracts; UI/UX requirements; build/package/release procedure; tests and validation gates; known issues; failed/rejected approaches that must not be repeated; current work-in-progress state; exact next steps; and unresolved decisions/risks.
+- Explicitly record compatibility/parity requirements when one implementation replaces or rewrites another. Missing functionality must be listed as a blocker, not silently omitted.
+- Record relevant user-requested invariants and project-specific rules in operational terms so a future conversation can implement them correctly.
+- Do not put passwords, access tokens, private keys, session cookies, authentication secrets, or other sensitive credentials in `CONTINUITY.md`.
+- Before starting work, read the file. Before ending or handing off a development checkpoint, update it.
+- A missing or materially stale `CONTINUITY.md` is a release-blocking compliance failure.
+- This requirement applies to every existing and future software project under `karpuzikov`; no project is grandfathered.
 
 ### Mandatory whole-product compliance audit
 
