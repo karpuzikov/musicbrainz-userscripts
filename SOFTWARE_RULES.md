@@ -28,6 +28,14 @@ Before creating, modifying, building, publishing, or handing off any software:
 5. For any user-facing UI work, re-check the relevant current UXDT guideline pages before implementation.
 6. Identify all cross-cutting rules affected by the change, not only the feature explicitly requested.
 
+### TLDR response invariant
+
+- `TLDR` is a content contract, not a decorative label. If a user-visible software-work reply begins with `TLDR`, or the user has requested TLDR responses by default, the answer itself must actually be concise.
+- Never write `TLDR` and then follow it with a long design document, exhaustive explanation, many sections, or a large list unless the user explicitly asked for detailed material in addition to the TLDR.
+- Default software replies should contain only the result/current status, the essential change(s), the immediate next action or test request, and a relevant download/repository link when applicable.
+- Before sending a reply, perform a final consistency check: if the message says `TLDR` but the body is not genuinely TLDR, shorten the body before sending it.
+- If the user explicitly asks for a detailed explanation, either omit the `TLDR` label or give a genuinely short TLDR first and then the requested detail. Do not use `TLDR` as the first word for a response whose main body is long by default.
+
 ### Mandatory per-software continuity file
 
 Every current and future GitHub software project maintained under the `karpuzikov` account must have an up-to-date `CONTINUITY.md` file that allows a new ChatGPT conversation or developer to continue the work without relying on chat memory.
@@ -44,6 +52,21 @@ Every current and future GitHub software project maintained under the `karpuziko
 - Before starting work, read the file. Before ending or handing off a development checkpoint, update it.
 - A missing or materially stale `CONTINUITY.md` is a release-blocking compliance failure.
 - This requirement applies to every existing and future software project under `karpuzikov`; no project is grandfathered.
+
+### Chat handoff command - `this chat is done`
+
+The exact user phrase `this chat is done` is a global software handoff command for every current and future software project maintained under the `karpuzikov` GitHub account.
+
+When the user sends this phrase:
+
+- Treat the current development conversation as ending.
+- Before replying, audit the current chat for any software-relevant decisions, requirements, bug findings, rejected approaches, implementation details, version/status changes, test results, unresolved issues, or next steps that have not yet been saved to the appropriate GitHub documentation.
+- Save any missing information to GitHub immediately, updating the product's `CONTINUITY.md` and any other authoritative project/global documentation that must stay synchronized.
+- Do not rely on chat memory as the handoff mechanism. GitHub documentation must be sufficient for a fresh conversation to continue correctly.
+- If the current code/documentation checkpoint is incomplete or inconsistent, fix the documentation before considering the handoff complete.
+- After the GitHub handoff is complete, reply with a ready-to-copy continuation message for the next chat.
+- The continuation message should identify the software/project and instruct the next chat to read the latest `SOFTWARE_RULES.md`, project rules, and that product's `CONTINUITY.md` from GitHub before continuing from the current state.
+- This command does not by itself mark software as tested/stable or remove `Under construction ⚠️`; normal testing/status rules still apply.
 
 ### Mandatory whole-product compliance audit
 
