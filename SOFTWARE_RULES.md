@@ -17,6 +17,14 @@ Unless a rule is explicitly labeled as optional/recommendation, it is a **releas
 - A stale, shortened, summarized, or selectively copied rule file is a compliance failure. Project-specific rules may add stricter requirements in separate rule files, but may not replace or weaken the complete global baseline.
 - Before software work begins in any repository, verify that its mirrored `SOFTWARE_RULES.md` matches the canonical file exactly.
 
+### Canonical mandatory UI/UX test gate
+
+- The file `UI_UX_RULES.md` is mandatory and must be mirrored **verbatim** from `karpuzikov/userscripts` to every `karpuzikov` software repository, alongside this `SOFTWARE_RULES.md`. Read both before editing a user-facing interface.
+- **Before implementation**, document the unique purpose, action, persistent side effects, keyboard and pointer interactions, visual states, dimensions and icons for **every control** in the affected workflow. Reuse a shared design system. Do not create duplicate actions, inconsistent buttons, needless padding, missing icons or broken hover states.
+- **After implementation**, launch the real application on the target GUI platform, inspect **actual screenshots**, test hover, click, selection, keyboard, resize, scroll, dialogs, cancellation and errors, and compare references side by side. Fix discrepancies before declaring completion.
+- Unit tests, syntax checking, fake widgets and static inspection **do not count as real visual/interaction acceptance**. Unavailable target runtime, or any unexecuted required test, must be recorded as **NOT RUN** in `CONTINUITY.md` and block any completed/stable claim; status remains `Under construction ⚠️`.
+- For new Python GUIs default to PySide6. **Never use Tkinter.**
+
 ### Mandatory preflight
 
 Before creating, modifying, building, publishing, or handing off any software:
