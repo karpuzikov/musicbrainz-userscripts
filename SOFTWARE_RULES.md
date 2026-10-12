@@ -2,6 +2,14 @@
 
 These rules apply to all current and future software maintained under the `karpuzikov` GitHub account. Repository-specific rules may add stricter requirements, but must not weaken these baseline requirements.
 
+## Highest-priority conversational trigger: `this chat is done`
+
+**STOP AND HAND OFF, NEVER JUST CLOSE THE CHAT.** When the user says exactly `this chat is done` in a software-development conversation, perform the complete GitHub closeout described below **before replying**. This trigger requires action, not merely a polite acknowledgment, and takes precedence over a generic brief-answer/stop response.
+
+Required, in order: (1) audit the conversation for pending changes, rules, bugs, version/status, results and next steps; (2) write missing details into the project's canonical `CONTINUITY.md` and relevant rules; (3) fetch the files back from GitHub and verify the commit and content; (4) reply with a genuinely concise **TLDR**, a real commit or updated file link, and a **ready-to-copy continuation prompt** identifying the project and the GitHub rules/continuity files to read first. If the GitHub write or verification fails, **explicitly state that the handoff is incomplete** and give a recovery prompt; never say only "chat closed", "this chat is closed", or falsely claim the handoff succeeded.
+
+This is a global requirement for every `karpuzikov` software repository and every new conversation, **even when the phrase arrives after an unfinished implementation or a prior attempt already reported completion**. An unfinished build stays `Under construction ⚠️`; do not launch or publish unrelated code in lieu of handoff. If the documentation is already complete, still verify it and provide the continuation prompt.
+
 ## Universal compliance gate - release blocking
 
 This section is a meta-rule over **every rule in this file, every project-specific rule, and every permanent software rule the user adds later**.
@@ -72,8 +80,10 @@ When the user sends this phrase:
 - Save any missing information to GitHub immediately, updating the product's `CONTINUITY.md` and any other authoritative project/global documentation that must stay synchronized.
 - Do not rely on chat memory as the handoff mechanism. GitHub documentation must be sufficient for a fresh conversation to continue correctly.
 - If the current code/documentation checkpoint is incomplete or inconsistent, fix the documentation before considering the handoff complete.
-- After the GitHub handoff is complete, reply with a ready-to-copy continuation message for the next chat.
-- The continuation message should identify the software/project and instruct the next chat to read the latest `SOFTWARE_RULES.md`, project rules, and that product's `CONTINUITY.md` from GitHub before continuing from the current state.
+- Read back the GitHub files after writing; verify the accepted commit and that the checkpoint contains all required details. Never claim the handoff completed on an unverified or failed write.
+- After the verified GitHub handoff, reply with a concise TLDR, commit/file link, and a ready-to-copy continuation message for the next chat. Do not replace these with "chat closed" or other acknowledgments.
+- The continuation message must state project/repository, exact version and status, outstanding task/bug, and instruct the next chat to read the latest `SOFTWARE_RULES.md`, project rules, and product `CONTINUITY.md` from GitHub first.
+- If any GitHub update or verification cannot be completed, mark **HANDOFF INCOMPLETE** and explain what could not be saved or verified rather than falsely closing.
 - This command does not by itself mark software as tested/stable or remove `Under construction ⚠️`; normal testing/status rules still apply.
 
 ### Mandatory whole-product compliance audit
