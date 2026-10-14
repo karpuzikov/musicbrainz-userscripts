@@ -33,6 +33,20 @@ Unless a rule is explicitly labeled as optional/recommendation, it is a **releas
 - Unit tests, syntax checking, fake widgets and static inspection **do not count as real visual/interaction acceptance**. Unavailable target runtime, or any unexecuted required test, must be recorded as **NOT RUN** in `CONTINUITY.md` and block any completed/stable claim; status remains `Under construction ⚠️`.
 - For new Python GUIs default to PySide6. **Never use Tkinter.**
 
+### Radical UI simplicity and minimum-click workflows - mandatory
+
+**Design for maximum functionality with minimum interface, minimum user interactions and no unnecessary explanatory text.** This rule applies to every new or modified screen, dialog, menu and repeated-item workflow. It is release-blocking.
+
+- **Smallest effective UI:** Include only controls and visible text needed to understand the current state, perform required actions, and recover from errors. Do not add speculative features, extra modes, redundant buttons, decorative panels or instructions the interface should make unnecessary.
+- **Fewest clicks:** Map each core task from entry to completion and eliminate avoidable selections, confirmations, navigation and repetitive steps. Prefer direct actions, appropriate defaults, bulk operations and remembered choices. Frequent actions should ideally require one click.
+- **No patronizing prose:** Do not fill the interface with tutorials, instructional paragraphs, obvious explanations, repetitive status text or redundant labels. Use concise, precise action names and brief actionable errors. Make optional detail available on demand only when it adds genuine value.
+- **Intuitive without a manual:** Use familiar controls, clear grouping, predictable behavior and consistent visual hierarchy. The purpose and effect of primary actions must be immediately understandable to a first-time user.
+- **No menu mazes:** Common actions must not be buried in dropdowns, nested menus or dialog chains. Do not make users repeatedly open a menu and choose among several options for each individual item when direct or batch selection can achieve the same task. Advanced or infrequent actions may be less prominent.
+- **No duplicate decisions:** Every displayed option must have a distinct functional outcome. Merge near-identical actions; never inflate a simple decision into several ambiguous choices or additional save/continue/cancel steps without necessity.
+- **No regression by simplification:** Keep every explicitly requested feature, required safety/recovery mechanism, meaningful system feedback, and accessibility/keyboard support. Avoid removing capability merely to reduce visible elements.
+
+**Acceptance gate:** For the affected core workflows, assess interaction count, unnecessary text, redundant options, discoverability and repeat-item effort. If the same task can be completed with a simpler interface or fewer actions without losing requirements, redesign before delivery. Keep design/control-contract documentation outside the user-facing UI.
+
 ### Mandatory preflight
 
 Before creating, modifying, building, publishing, or handing off any software:
