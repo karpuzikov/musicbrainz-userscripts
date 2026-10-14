@@ -10,6 +10,20 @@ Canonical rule file for every software repository under `karpuzikov`. Mirror thi
 
 This is a **release-blocking invariant**. Compile, lint, unit tests and mocked/headless controls cannot substitute for inspecting a real rendered application on the target platform.
 
+## Radical simplicity - mandatory acceptance criterion
+
+**The preferred UI is the smallest intuitive interface that completes every required task with the fewest possible user actions.** Optimize what the user must do, not how many features or explanations can be displayed.
+
+1. **Minimal UI:** Remove visual clutter, redundant controls, unnecessary headings, instructional text, decorative sections and speculative options. Do not replace simple direct actions with complex widgets.
+2. **Minimum clicks:** Count the actual clicks/selections from starting a common task to completion, including menus, confirmation dialogs and per-item repetition. Remove avoidable interactions; use smart defaults, remembered choices and batch operations. Make frequent actions directly accessible.
+3. **No obvious explanations:** Avoid tutorial-like copy, repeated descriptions and patronizing helper text. Use short, clear labels; reserve additional guidance for genuinely ambiguous states, actionable errors and essential safety information.
+4. **Immediate comprehension:** First-time users must understand what to click and what will happen without reading a guide. Use familiar patterns, meaningful icons/labels, logical grouping and consistent visual behavior.
+5. **Never force repetitive menus:** For repeated decisions (such as selecting treatment for many files or tracks), provide quick inline/direct actions and appropriate apply-to-all or remembered-choice mechanisms instead of reopening a dropdown for each row.
+6. **Distinct actions only:** Eliminate synonyms, near-duplicate buttons and unnecessary nested menu/dialog stages. Keep primary actions visible; expose advanced options only when needed.
+7. **Preserve correctness:** Do not sacrifice requested functions, safety, reversible actions, accessible names, focus/keyboard support or necessary progress/error feedback in the name of minimalism.
+
+**Before accepting a design, perform a task walkthrough:** Can its frequent tasks use fewer clicks? Can text or controls be removed? Can repeated work be batched? Is every option unambiguous? Can a new user succeed without instructions? Any avoidable complexity is a design defect that must be corrected before release.
+
 ## Sources and priority
 
 - Consult the complete applicable [UXDT Guidelines](https://www.uxdt.nic.in/guidelines/) tree.
