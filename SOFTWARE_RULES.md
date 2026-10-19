@@ -66,6 +66,10 @@ Before creating, modifying, building, publishing, or handing off any software:
 - Before sending a reply, perform a final consistency check: if the message says `TLDR` but the body is not genuinely TLDR, shorten the body before sending it.
 - If the user explicitly asks for a detailed explanation, either omit the `TLDR` label or give a genuinely short TLDR first and then the requested detail. Do not use `TLDR` as the first word for a response whose main body is long by default.
 
+### Mandatory Visual QA Gate for all user-facing changes
+
+Every UI change must enforce the full canonical `UI_UX_RULES.md` **Visual QA Gate**. Before claiming an interface fixed, record a control contract, render it and run automated geometry/interaction checks (prefer Playwright for embedded HTML, with screenshots at multiple window sizes and scaling), inspect/compare the captured screenshots, then test the actual target OS/application GUI with genuine representative interactions. A script parsing or static substring checks alone NEVER constitutes visual acceptance. Preserve all UI features and make the interface as simple as possible; reject overlapping controls, misaligned glyphs, clipped rows, redundant text/buttons and inaccessible hover actions. Record all results and screenshot paths in `UI_UX_ACCEPTANCE.md` and `CONTINUITY.md`. If native acceptance is unavailable, mark it **NOT RUN** and retain **Under construction ⚠️**; never claim stable/completed/fixed. Visual test dependencies may live in development tests, not the app runtime.
+
 ### Mandatory per-software continuity file
 
 Every current and future GitHub software project maintained under the `karpuzikov` account must have an up-to-date `CONTINUITY.md` file that allows a new ChatGPT conversation or developer to continue the work without relying on chat memory.
