@@ -1,6 +1,6 @@
 # UI_UX_RULES - Mandatory UI design and acceptance
 
-Canonical rule file for every software repository under `karpuzikov`. Mirror this file at each repository root, beside `SOFTWARE_RULES.md`. It supplements all global/project rules; the newest explicit user instructions prevail.
+Canonical rule file for every software repository under `karpuzikov`. Mirror this file and `DESIGN.md` at each repository root, beside `SOFTWARE_RULES.md`. It supplements all global/project rules; the newest explicit user instructions prevail.
 
 ## Mandatory requirement
 
@@ -44,7 +44,7 @@ The following ordered checks are mandatory for every affected UI workflow, inclu
 - Consult the complete applicable [UXDT Guidelines](https://www.uxdt.nic.in/guidelines/) tree.
 - For Windows apps also consult [Fluent 2](https://fluent2.microsoft.design/), its [layout](https://fluent2.microsoft.design/layout) and [accessibility](https://fluent2.microsoft.design/accessibility) specifications, where applicable. Respect Windows conventions.
 - If the user names a reference product, **inspect actual source/components AND screenshots** if available. Matching that user's specified UI takes precedence over inventing a merely similar design. Record relevant links, revisions and screenshot sizes.
-- Create a shared design system: typography, colors, spacing, dimensions, corner radii, borders, icon library, icons/strokes, active/hover/pressed/focus/disabled/error states, tables, cards, inputs, scrollbars, dialogs, and feedback. Use reusable components rather than individual handcrafted buttons.
+- **Default design system: [`DESIGN.md`](DESIGN.md)** (Karpuzikov) at the repository root. Every UI uses its colors, typography, spacing, radii, elevation and component patterns unless the user names another reference. Do not invent per-app palettes, fonts or radii; extend `DESIGN.md` instead. Use reusable components rather than individual handcrafted buttons.
 - Treat padding as purposeful. Fluent's layout base scale is 4px. Icon-only controls do not inherit wide text-button padding; keep hit targets accessible, icons optically centered, and artwork unoccluded.
 - **Never use Tkinter.** For new Python desktop GUI programs, choose PySide6 unless the user explicitly chooses another supported framework. Do not replace a functioning Python program with an unwanted Node/CLI wrapper.
 
